@@ -1,0 +1,2262 @@
+<!-- 
+ 更新：
+  1. 同步程度詞條
+  2. 自動產生評語
+  3. 程度+能力分類
+  
+-->
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>MA評語產生器</title>
+<style>
+:root{
+  --brand-blue:#003C96;
+  --gray:#808080;
+  --light-gray:#F5F5F5;
+  --white:#FFFFFF;
+  --soft-black:#1A1A1A;
+  --card-radius:14px;
+  --btn-radius:12px;
+}
+*{box-sizing:border-box;font-family:"Noto Sans TC",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;font-size:90%;}
+body{margin:0;background:var(--light-gray);color:var(--soft-black);padding:20px;}
+.header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.logo{width:28px;height:28px;border-radius:6px;background:var(--brand-blue);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;}
+.title{font-size:18px;font-weight:700;}
+.container{max-width:1100px;margin:0 auto;background:var(--white);border-radius:16px;padding:18px;box-shadow:0 6px 20px rgba(0,0,0,0.08);}
+.tabs{display:flex;gap:8px;border-bottom:1px solid #eee;padding-bottom:6px;margin-bottom:18px;}
+.tab{padding:3px 14px;border-radius:10px;cursor:pointer;background:transparent;color:var(--gray);font-weight:600;}
+.tab.active{background:linear-gradient(90deg,rgba(0,60,150,0.08),rgba(0,60,150,0.02));color:var(--brand-blue);box-shadow:0 4px 10px rgba(0,60,150,0.06);}
+.content{display:block;padding-top:0px;}
+.grid{display:grid;grid-template-columns:1fr 315px;gap:18px;align-items:start;}
+.card{background:var(--white);padding:14px;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,0.04);}
+.form-row{display:flex;gap:8px;margin-bottom:6px;align-items:center;} /* gap 從 10px 改小 */
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;align-items:start;}
+.form-row .label{width:72px;color:var(--gray);font-size:14px;text-align:left;display:flex;align-items:center;} /* label 寬度較小，靠近 select；垂直置中 */
+
+/* 反腳勾選樣式：水平排列、垂直置中，字體與選單接近大小 */
+#reverseFootWrap{ display:inline-flex; align-items:center; gap:8px; margin-left:8px; font-size:14px; }
+#reverseFoot{ width:18px; height:18px; margin-right:6px; vertical-align:middle; -webkit-appearance:auto; appearance:auto; }
+.select,textarea,input[type="text"]{width:100%;padding:10px;border-radius:10px;border:1px solid #e6e6e6;font-size:14px;background:#fff;text-align:left;}
+.select option{white-space:normal;}
+textarea{min-height:80px;resize:vertical;}
+.small{width:160px;}
+.actions{display:flex;gap:8px;align-items:center;margin-top:6px;}
+.btn{padding:10px 12px;border-radius:var(--btn-radius);border:0;cursor:pointer;font-weight:700;position:relative;display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ white-space:nowrap;
+ line-height:1;
+ height:auto;}
+.btn.primary{background:var(--brand-blue);color:white;box-shadow:0 6px 18px rgba(0,60,150,0.12);}
+.btn.ghost{background:transparent;border:1px solid #e6e6e6;color:var(--soft-black);}
+.btn.clear{
+  background:#d5d5d5;
+  color:#3b3b3b;
+  border:0;
+  box-shadow:0 6px 12px rgba(231,76,60,0.12);
+}
+.btn.restore{
+  background:#2b8e54;
+  color:#fff;
+  border:0;
+  box-shadow:0 6px 12px rgba(46,204,113,0.12);
+}
+/* 保留 ghost 外觀時的邊框（若同時有 ghost class，降低不透明度以避免過度對比）*/
+.btn.ghost.clear{ border:0; }
+.btn.ghost.restore{ border:0; }
+.copy-check{
+  position:absolute;
+  right:-28px;
+  top:6px;
+  font-size:12px;
+  color:white;
+  opacity:0;
+  transition:opacity 0.2s, transform 0.12s;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:#2ecc71; /* 綠色圓圈 */
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,0.12);
+  line-height:1;
+  transform:scale(0.9);
+}
+/* 使用 ::before 顯示勾號字元（避免原本 <span> 內文字造成排版差異） */
+.copy-check::before{ content: "✓"; font-size:12px; }
+/* 若用 JS 切換 class 或直接調整 opacity，都能顯示動畫 */
+/*.copy-check.show{ opacity:1; transform:scale(1); }*/
+.toast{
+  position:fixed;
+  right:24px;
+  bottom:24px;
+  background:rgba(0,0,0,0.8);
+  color:white;
+  padding:8px 12px;
+  border-radius:10px;
+  display:inline-block;
+  opacity:0;
+  transform:translateY(6px);
+  transition:opacity .2s,transform .2s;
+  pointer-events:none;
+  z-index:9999;
+}
+.toast.show{opacity:1;transform:translateY(0);}
+.preview{white-space:pre-wrap;line-height:1.6;font-size:14px;color:var(--soft-black);padding:12px;border-radius:10px;border:1px dashed #eee;background:#fafafa;min-height:120px;}
+.footer-note{font-size:12px;color:var(--gray);margin-top:10px;}
+.degree-item{padding:4px 6px;border:1px solid #eee;margin-bottom:4px;border-radius:6px;cursor:grab;display:flex;justify-content:space-between;align-items:center;text-align:left;background:#fafafa;}
+.degree-item span{flex:1;text-align:left;}
+.degree-item button{background:none;border:none;color:#555;font-weight:700;cursor:pointer;font-size:14px;}
+.remark-table{width:auto;border-collapse:collapse;margin-top:10px;table-layout:auto;}
+.remark-table th, .remark-table td{border:1px solid #ddd;padding:6px;vertical-align:middle;text-align:center;white-space:nowrap;}
+.remark-table th{background:rgba(0,60,150,0.08);color:var(--brand-blue);}
+/* remark label margin 調整，避免向下偏移 */
+.remark-cell label{display:inline-flex;align-items:center;gap:3px;margin-bottom:0;flex-wrap:wrap;}
+.remark-cell input{transform:scale(1.2);}
+
+/* 版本號樣式（你要求的小字灰色） */
+.version {
+  font-size: 12px;
+  color: var(--gray);
+  font-weight: 400;
+  margin-left: 6px;
+}
+
+/* 修改：必填欄位標示（星號移到文字後） */
+.label.required::after{
+  content: "*";
+  color: #e74c3c; /* 紅色星號 */
+  margin-left:2px;
+  font-weight:600;
+  display:inline-block;
+}
+.note-required{
+  font-size:12px;
+  color:var(--gray);
+  margin-top:8px;
+}
+
+@media(max-width:980px){
+  .grid{grid-template-columns:1fr;}
+  .form-row, .form-row-2{flex-direction:column;align-items:flex-start;}
+  .form-row .label{width:100%;}
+  .small{width:100%;}
+}
+
+/* 變更：等級、評級、能力、類型寬度統一為 160px（與 .small 一致），degreeSelect 保持原來較寬 */
+#level, #rating, #levelState, #type {
+  margin-left: -8px;
+  width: 100px;
+}
+/* degree select (保留) */
+#degreeSelect{
+  width:300px;
+  display:inline-block;
+  margin-left:0;
+  transform:translateX(-8px);
+  transition:transform .12s;
+}
+
+/* 可微調的評級與特質：使用 inline-block + transform */
+#rating, #character{
+  width:100px;
+  display:inline-block;
+  margin-left:0;
+  transform:translateX(-6px); /* ← 調整這個值：正值向右，負值向左 */
+  transition:transform .12s;
+}
+
+/* 單一欄位臨時微調：在 HTML 加 class="nudge" 並調整以下規則值 */
+#rating.nudge{ transform:translateX(-12px); }
+#character.nudge{ transform:translateX(-12px); }
+
+/* 手機響應：移除偏移 */
+@media(max-width:980px){
+  #degreeSelect, #rating, #character{
+    width:100% !important;
+    transform:none !important;
+    display:block;
+    margin-left:0;
+  }
+}
+
+/* 容器預設隱藏，由 JS 控制顯示 */
+#requiredSkills, #coreSkills { display: none; }
+/* 核心技能面板樣式（確保按鈕與欄位顯示） */
+.style-block{
+  background:var(--white);
+  padding:8px;
+  border-radius:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.04);
+  display:flex;
+  justify-content:flex-start;       /* 改為靠左排列，所有 skill-col 在同一列 */
+  flex-wrap:nowrap;                 /* 不換行，保持單列 */
+  gap:4px;
+  overflow-x:auto;                  /* 若寬度不足可水平捲動 */
+  -webkit-overflow-scrolling:touch;
+  align-items:flex-start;
+  padding-bottom:6px;
+}
+.skill-col{
+  flex:0 0 auto;                    /* 固定寬度，不被換行壓縮 */
+  width:120px;
+  text-align:center;
+  min-width:120px;
+}
+.skill-name{font-weight:700;margin-bottom:6px;color:var(--brand-blue);font-size:13px;}
+.skill-buttons{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  row-gap:6px;
+}
+/* 每一列按鈕容器：水平排列 (I, IA) / (A, AC, C) */
+.skill-row{ display:flex; gap:6px; justify-content:center; }
+
+/* --- 縮小按鈕並改為方形（調整為 20x20） --- */
+.skill-buttons button{
+  width:20px;
+  height:20px;
+  line-height:20px;
+  padding:0;
+  border:1px solid var(--gray);
+  border-radius:4px; /* 小圓角 */
+  background:var(--white);
+  cursor:pointer;
+  font-weight:700;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:10px;
+  box-sizing:border-box;
+}
+.skill-buttons button.active{
+  background:var(--brand-blue);
+  color:var(--white);
+  border-color:var(--brand-blue);
+}
+/* 隱藏技能標籤預設，由 JS 控制顯示 */
+#skillsLabel { display: none; }
+.tab[data-tab="editor"]{ display:none !important; }
+#editorTab{ display:none !important; }
+/* 隱藏匯入/匯出與編輯用按鈕，改以 Google Sheet 自動讀取 */
+#exportBtn,#importBtn,#resetDefaultBtn,#exportAbilityBtn,#importAbilityBtn,#setAbilityDefaultBtn,#restoreAbilityDefaultBtn,#sheetIdInput,#sheetGidInput,#syncSheetBtn{ display:none !important; }
+/* 程度項目前的能力分類按鈕（圓形、藍色文字） */
+.ability-btn{
+  width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-right:8px;border:2px solid var(--brand-blue);color:var(--brand-blue);background:transparent;cursor:pointer;font-weight:700;font-size:12px;
+}
+.ability-btn.active{background:var(--brand-blue);color:#fff;}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">MA</div>
+  <div class="title">評語產生器<span class="version">v2.7.0　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+</div>
+
+<div class="container">
+  <div class="tabs" role="tablist">
+    <div class="tab active" data-tab="generator">評語產生器</div>
+    <div class="tab" data-tab="editor">程度編輯</div>
+    <div class="tab" data-tab="need">需加強編輯</div>
+    <div class="tab" data-tab="practice">建議練習編輯</div>
+    <div class="tab" data-tab="help">使用說明</div>
+  </div>
+
+  <!-- 評語產生器 -->
+  <div class="content" id="generatorTab">
+    <div class="grid">
+      <div class="card">
+        <h3>單板課程</h3>
+
+        <!-- 改為單欄容器，確保：第一列 = 等級｜評級｜能力；第二列 = 程度；第三列 = 類型｜特質 -->
+        <div style="display:block;">
+          <!-- 第一列：等級 ｜ 評級 ｜ 能力 -->
+          <div class="form-row" style="width:100%;margin-bottom:8px;">
+            <div class="label required">等級</div>
+            <select id="level" class="select small" required aria-required="true" title="必填：請選擇等級">
+              <option value="">請選擇</option>
+              <option value="1">等級1</option>
+              <option value="2">等級2</option>
+              <option value="3">等級3</option>
+              <option value="4">等級4</option>
+              <option value="5">等級5</option>
+              <option value="6">等級6</option>
+              <option value="7">等級7</option>
+            </select>
+
+            <div class="label">　　評級</div>
+            <select id="rating" class="select small" title="選擇評級">
+              <option>未評級</option>
+              <option>評級未過</option>
+              <option>評級過關、未達跳標</option>
+              <option>評級過關</option>
+              <option>跳級過關</option>
+            </select>
+
+            <div class="label required">　能力</div>
+            <select id="levelState" class="select small" required aria-required="true" title="必填：請選擇能力">
+              <option value="">請選擇</option>
+              <option>初</option>
+              <option>中</option>
+              <option>高</option>
+            </select>
+            <label id="reverseFootWrap" style="display:none;margin-left:8px;" title="反腳：遇到需要反腳的情況請勾選"><input id="reverseFoot" type="checkbox">反腳</label>
+          </div>
+
+          <!-- 第二列：程度（與類型、特質同列） -->
+          <div class="form-row" style="width:100%;margin-bottom:8px;align-items:center;">
+            <div class="label required">程度</div>
+            <select id="degreeSelect" class="select" required aria-required="true" title="必填：請選擇程度" style="width:260px;margin-left:0;">
+              <option value="">請先選擇等級</option>
+            </select>
+
+            <!-- 互換：先顯示「特質」，再是「類型」。同時將「類型」隱藏（保留 DOM 以免影響 JS）。 -->
+            <div class="label">　 　 特質</div>
+            <select id="character" class="select small" style="margin-left:0;">
+              <option value="">請選擇</option>
+              <option>積極型</option>
+              <option>穩健型</option>
+              <option>保守型</option>
+              <option>安全型</option>
+              <option>變化型</option>          
+            </select>
+
+            <!-- 隱藏類型（保留 element 供程式存取） -->
+            <div class="label" style="display:none;">　 　類型</div>
+            <select id="type" class="select small" style="margin-left:0; display:none;">
+              <option value="">請選擇</option>
+              <option>👀</option>
+              <option>🦶</option>
+              <option>🧠</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="label">需加強</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              
+              <div id="needQuickButtons" style="position:relative;display:inline-block;">
+                <button id="needQuickToggle" type="button" class="btn ghost" aria-haspopup="true" aria-expanded="false">快速新增 ▾</button>
+                <!-- 與 practiceQuickList 使用相同定位邏輯 -->
+                <div id="needQuickList" style="position:absolute;z-index:9999;display:none;left:calc(100% + 3px);bottom:0px;background:#fff;border:2px solid #e6e6e6;border-radius:8px;padding:8px;max-width:420px;min-width:220px;max-height:320px;overflow:auto;box-shadow:0 8px 20px rgba(0,0,0,0.08);flex-wrap:wrap;gap:6px;pointer-events:auto;"></div>
+              </div>
+            </div>
+            <textarea id="needImprove" placeholder="輸入需加強的重點..."></textarea>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="label">建議練習</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+            <!-- 改為單一「快速新增」按鈕 + 下拉清单（失焦或點外面關閉） -->
+            <div id="practiceQuickButtons" style="position:relative;display:inline-block;vertical-align:middle;">
+               <button id="practiceQuickToggle" type="button" class="btn ghost" aria-haspopup="true" aria-expanded="false">快速新增 ▾</button>
+               <!-- 放在按鈕右側、與按鈕上方對齊；內部使用 flex-wrap 控制每列最多 7 個項目 -->
+               <div id="practiceQuickList" style="position:absolute;z-index:9999;display:none;left:calc(14% + 3px);bottom:0px;;background:#fff;border:2px solid #e6e6e6;border-radius:8px;padding:8px;max-width:420px;min-width:220px;max-height:320px;overflow:auto;box-shadow:0 8px 20px rgba(0,0,0,0.08);flex-wrap:wrap;gap:6px;pointer-events:auto;"></div>
+            </div>
+             <textarea id="practice" placeholder="輸入建議練習內容..."></textarea>
+           </div>
+         </div>
+
+        <div class="form-row">
+          <div class="label">其他備註</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+            <textarea id="otherNotes" placeholder="其他備註..." style="min-height:80px;"></textarea>
+          </div>
+        </div>
+
+        <div class="form-row" style="align-items:center;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="label" id="skillsLabel">必要技能</div>
+            <!-- 全部勾選/取消按鈕（顯示於欄位右側） -->
+            <button id="toggleRequiredAllBtn" type="button" class="btn ghost" style="padding:6px 8px;font-size:12px;">清除</button>
+          </div>
+           <div style="flex:1">
+             <!-- 必要技能（等級 1-4 顯示） -->
+             <div id="requiredSkills">
+               <table class="remark-table" aria-hidden="false">
+                 <thead>
+                  <tr>
+                    <th>
+                      一級
+                      <!-- 一級 旁的切換按鈕（同時勾選/取消該欄所有項目） -->
+                      <button id="toggleLevel1Btn" type="button" class="btn ghost" style="margin-left:6px;padding:4px 6px;font-size:12px;">全選</button>
+                    </th>
+                    <th>三級</th>
+                    <th>四級</th>
+                  </tr>
+                 </thead>
+                 <tbody>
+                   <tr>
+                     <td class="remark-cell">
+                       <label><input type="checkbox" class="remark" value="平地移動" data-tristate="false">平地移動</label>
+                       <label><input type="checkbox" class="remark" value="安全摔倒" data-tristate="false">安全摔倒</label>
+                       <label><input type="checkbox" class="remark" value="下纜車" data-tristate="false">下纜車</label>
+                     </td>
+                     <td class="remark-cell">
+                       <label><input type="checkbox" class="remark" value="下桿開機" data-tristate="true">下桿開機</label>
+                     </td>
+                     <td class="remark-cell">
+                       <label><input type="checkbox" class="remark" value="出界" data-tristate="false">出界</label>
+                     </td>
+                   </tr>
+                 </tbody>
+               </table>
+             </div>
+            
+             <!-- 核心技能（等級 7 顯示） -->
+             <div id="coreSkills" aria-hidden="true">
+               <div class="style-block" id="skillBlockCore"></div>
+               <!-- 恢復預設按鈕：將所有核心技能設定為 I -->
+               <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+                 <button id="restoreCoreDefaultsBtn" class="btn ghost" type="button" style="padding:6px 8px;font-size:12px;">恢復預設</button>
+                 <div id="coreOutput" class="output" style="margin-left:8px;margin-top:0;background:transparent;padding:6px;text-align:left;"></div>
+               </div>
+             </div>
+           </div>
+         </div>
+
+        <!-- 新增說明文字 -->
+        <div class="note-required" aria-hidden="false">＊為必填項：等級、能力、程度</div>
+
+      </div>
+
+      <div class="card">
+        <h3>評語預覽</h3>
+        <div id="preview" class="preview">尚未產生評語。</div>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center;position:relative;">
+          <button class="btn primary" id="genBtn">產生評語</button>
+
+          <!-- 單一整合按鈕：清空/恢復 -->
+          <button class="btn ghost clear" id="toggleResetRestoreBtn">清空輸入</button>
+
+          <div style="position:relative;">
+            <button class="btn primary" id="copyBtn">複製</button>
+            <span id="copyCheck" class="copy-check"> </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 程度編輯 -->
+  <div class="content" id="editorTab" style="display:none">
+    <div class="card">
+      <h3>程度內容</h3>
+      <div class="form-row">
+        <div class="label">選擇等級</div>
+        <select id="editLevel" class="select small">
+          <option value="1">等級1</option>
+          <option value="2">等級2</option>
+          <option value="3">等級3</option>
+          <option value="4">等級4</option>
+          <option value="5">等級5</option>
+          <option value="6">等級6</option>
+          <option value="7">等級7</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="label">現有項目</div>
+        <div style="flex:1">
+          <ul id="degreeList" style="list-style:none;padding-left:0;margin:0;max-height:320px;overflow:auto;"></ul>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="label">新增項目</div>
+        <input id="newDegree" type="text" placeholder="輸入新的程度..." />
+        <button class="btn primary" id="addDegreeBtn">新增</button>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="exportBtn">匯出</button>
+        <button class="btn ghost" id="importBtn">匯入</button>
+        <button class="btn ghost" id="resetDefaultBtn">重置為預設</button>
+        <button class="btn ghost" id="exportAbilityBtn">匯出能力</button>
+        <button class="btn ghost" id="importAbilityBtn">匯入能力</button>
+        <button class="btn ghost" id="setAbilityDefaultBtn">設為能力預設</button>
+        <button class="btn ghost" id="restoreAbilityDefaultBtn">還原能力預設</button>
+        <div style="display:flex;gap:6px;align-items:center;margin-left:8px;">
+          <input id="sheetIdInput" class="select small" style="width:220px;padding:6px;" placeholder="Google Sheet ID" value="1kx9lS69H_ldkeKt3Nww_k65z8IMcRgTlm86uFJtdViA">
+          <input id="sheetGidInput" class="select small" style="width:80px;padding:6px;" placeholder="gid" value="0">
+          <button class="btn ghost" id="syncSheetBtn">同步 Google Sheet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 加強內容範本（需加強編輯） -->
+  <div class="content" id="needTab" style="display:none">
+    <div class="card">
+      <h3>加強內容</h3>
+      <div class="form-row">
+        <div class="label">選擇等級</div>
+        <select id="editNeedLevel" class="select small">
+          <option value="1">等級1</option>
+          <option value="2">等級2</option>
+          <option value="3">等級3</option>
+          <option value="4">等級4</option>
+          <option value="5">等級5</option>
+          <option value="6">等級6</option>
+          <option value="7">等級7</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="label">現有項目</div>
+        <div style="flex:1">
+          <ul id="needList" style="list-style:none;padding-left:0;margin:0;max-height:320px;overflow:auto;"></ul>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="label">新增項目</div>
+        <input id="newNeed" type="text" placeholder="輸入新的需加強詞條..." />
+        <button class="btn primary" id="addNeedBtn">新增</button>
+      </div>
+
+      <div class="actions">
+        <button class="btn ghost" id="exportNeedBtn">匯出</button>
+        <button class="btn ghost" id="importNeedBtn">匯入</button>
+        <button class="btn ghost" id="resetNeedBtn">重置為預設</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 建議練習範本 -->
+  <div class="content" id="practiceTab" style="display:none">
+    <div class="card">
+      <h3>練習內容</h3>
+
+      <!-- 加入等級選擇，與「程度編輯」一致 -->
+      <div class="form-row">
+        <div class="label">選擇等級</div>
+        <select id="editPracticeLevel" class="select small">
+          <option value="1">等級1</option>
+          <option value="2">等級2</option>
+          <option value="3">等級3</option>
+          <option value="4">等級4</option>
+          <option value="5">等級5</option>
+          <option value="6">等級6</option>
+          <option value="7">等級7</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="label">現有項目</div>
+        <div style="flex:1">
+          <ul id="practiceList" style="list-style:none;padding-left:0;margin:0;max-height:320px;overflow:auto;"></ul>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="label">新增項目</div>
+        <input id="newPractice" type="text" placeholder="輸入新的練習內容..." />
+        <button class="btn primary" id="addPracticeBtn">新增</button>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="exportPracticeBtn">匯出</button>
+        <button class="btn ghost" id="importPracticeBtn">匯入</button>
+        <button class="btn ghost" id="resetPracticeBtn">重置為預設</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 加強內容範本（需加強編輯） -->
+  <div class="content" id="needTab" style="display:none">
+    <div class="card">
+      <h3>加強內容</h3>
+      <div class="form-row">
+        <div class="label">選擇等級</div>
+        <select id="editNeedLevel" class="select small">
+          <option value="1">等級1</option>
+          <option value="2">等級2</option>
+          <option value="3">等級3</option>
+          <option value="4">等級4</option>
+          <option value="5">等級5</option>
+          <option value="6">等級6</option>
+          <option value="7">等級7</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="label">現有項目</div>
+        <div style="flex:1">
+          <ul id="needList" style="list-style:none;padding-left:0;margin:0;max-height:320px;overflow:auto;"></ul>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="label">新增項目</div>
+        <input id="newNeed" type="text" placeholder="輸入新的加強內容..." />
+        <button class="btn primary" id="addNeedBtn">新增</button>
+      </div>
+
+      <div class="actions">
+        <button class="btn ghost" id="exportNeedBtn">匯出</button>
+        <button class="btn ghost" id="importNeedBtn">匯入</button>
+        <button class="btn ghost" id="resetNeedBtn">重置為預設</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 使用說明 -->
+  <div class="content" id="helpTab" style="display:none">
+    <div class="card">
+      <h3>使用說明</h3>
+      <ol>
+        
+        <li>在「程度編輯」頁可自訂每個等級的程度選項。</li>
+        <li>切換至「評語產生器」選擇等級後會自動載入。</li>
+        
+      </ol>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast">已複製</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+<script>
+// ---------- 預設資料 ----------
+const defaultDegreeOptions = {
+  "1":[ /*"無法放手",
+        "可放手1-3秒",
+        "可放手3秒以上",
+        "可放手5-10秒",
+        "可持續放手滑行",
+        "可控制上下"*/
+      ],
+  "2":[ /*"雙手扶桿左右",
+        "單手扶桿左右",
+        "可左右不扶桿，不穩需稍微扶桿輔助。",
+        "不扶桿左右，需輔助換邊。",
+        "可稍微落葉飄，換邊完需輕碰桿輔助。",
+        "可離桿落葉飄。",
+        "可離桿強飄。"*/
+      ],
+  "3":[ /*"無法橫滑放手。",
+        "可原地放手3秒以上。",
+        "雙手扶桿可改變板子角度，或已開始左右。",
+        "單手扶桿左右",
+        "可左右不扶桿，不穩需稍微扶桿輔助。",
+        "不扶桿左右，需輔助換邊。",
+        "可稍微落葉飄，換邊完需輕碰桿輔助。",
+        "可離桿落葉飄。",
+        "可離桿強飄。"*/
+      ],
+  "4":[ /*"正在進行下半弧練習，H還不太熟練。",
+        "正在進行下半弧練習，T還不太熟練。",
+        "下半弧已熟練。",
+        "正在進行上半弧練習，H抬升上半弧還不太熟練。",
+        "正在進行上半弧練習，T抬升上半弧還不太熟練。",
+        "可分解的滑出H、T，上、下半弧四個動作，但穩定性還可提升。",
+        "四個動作皆可穩定分解完成，連結不順。",
+        "可順利連結兩側雙C。",
+        "可抬升離桿，直板輕碰完成C。"*/
+      ],
+  "5":[ /*"可藉由輔助完成雙C，尚無法離桿完成任一邊的C。",
+        "T2H 可離桿獨立完成，未達標；H2T 尚無法獨立完成。",
+        "T2H 可離桿獨立完成，達標；H2T 尚無法獨立完成。",
+        "T2H 尚無法獨立完成；H2T 可離桿獨立完成，未達標。",
+        "T2H 尚無法獨立完成；H2T 可離桿獨立完成，達標。",
+        "T2H 可離桿獨立完成，未達標；H2T 可離桿獨立完成，未達標。",
+        "T2H 可離桿獨立完成，達標；H2T 可離桿獨立完成，未達標。",
+        "T2H 可離桿獨立完成，未達標；H2T 可離桿獨立完成，達標",
+        "兩側C皆可離桿獨立完成，3格內。",
+        "兩側C皆可離桿獨立完成，2格內。"*/
+      ],
+  "6":[ /*"可輔助完成S 路徑，容易過度依賴輔助。",
+        "可輔助完成S 路徑，輕微依賴輔助。",
+        "沒有輔助狀態下，無法找到S路徑。",
+        "有自行完成S路徑的能力，但容易在2-3個彎之後失誤。",
+        "有自行完成S路徑的能力，但容易在4-5個彎之後失誤。",
+        "可離桿S，做閉鎖式彎形，約40秒完成6個彎，不穩定，未達標。",
+        "可離桿S，做閉鎖式彎形，約40秒完成6個彎，穩定達標。",
+        "可離桿S，做較開放式彎形，可在20-30秒完成6個彎，不穩定，建議在中階熟練。",
+        "可離桿S，做較開放式彎形，可在20-30秒完成6個彎，穩定，建議去高階。"*/
+      ],
+  "7":["H2T可提換","可離桿提換S","大中小彎 可跟滑","可團身離桿","大中小彎、團身可跟滑","皆可跟滑"]
+};
+
+// ---------- 合併的程度 + 能力 預設（可直接在程式碼中編輯）
+// 格式：
+// const defaultDegreeOptionsWithAbility = {
+//   "1": [ { t: '詞條文字', a: '初' }, { t: '另一條', a: '中' }, ... ],
+//   "2": [ ... ]
+// }
+// 你可以直接在此修改詞條與能力分類，程式會以此為基底初始化 default 資料。
+const defaultDegreeOptionsWithAbility = (function(){
+  const cycle = ['初','中','高'];
+  const out = {};
+  for(const lv in defaultDegreeOptions){
+    out[lv] = (defaultDegreeOptions[lv] || []).map((txt, idx)=>({ t: txt, a: cycle[idx % cycle.length] }));
+  }
+  return out;
+})();
+
+// 使用上方合併預設來覆寫原本的 defaultDegreeOptions（方便程式中其他地方繼續使用原本的陣列形式）
+for(const lv in defaultDegreeOptionsWithAbility){
+  defaultDegreeOptions[lv] = defaultDegreeOptionsWithAbility[lv].map(x=>x.t);
+}
+
+// 若尚未有預設的 ability map，則以 combined 預設產生並儲存
+if(!localStorage.getItem('degreeAbilityMap_v1')){
+  const initial = {};
+  for(const lv in defaultDegreeOptionsWithAbility){
+    initial[lv] = {};
+    defaultDegreeOptionsWithAbility[lv].forEach(obj=>{ initial[lv][obj.t] = obj.a; });
+  }
+  try{ localStorage.setItem('degreeAbilityMap_v1', JSON.stringify(initial)); }catch(e){}
+}
+
+// checkbox 顯示名稱 -> 輸出短名 map
+const remarkMap = {
+  "平地移動":"平移",
+  "安全摔倒":"安摔",
+  "下纜車":"纜車",
+  "下桿開機":"下桿",
+  "出界":"出界"
+};
+
+// ---------- storage helpers ----------
+function getCustomOptions(){ const s = localStorage.getItem('customDegreeOptions'); return s ? JSON.parse(s) : {}; }
+function saveCustomOptions(d){ localStorage.setItem('customDegreeOptions', JSON.stringify(d)); }
+function getDegreeOptions(){ return {...defaultDegreeOptions, ...getCustomOptions()}; }
+
+// ---------- degree ability mapping (storage) ----------
+function getAbilityMap(){ try{ const s = localStorage.getItem('degreeAbilityMap_v1'); return s ? JSON.parse(s) : {}; }catch(e){return {}; } }
+function saveAbilityMap(m){ try{ localStorage.setItem('degreeAbilityMap_v1', JSON.stringify(m)); }catch(e){}
+}
+// Ensure ability map for level aligns with provided list (preserve existing mappings when possible)
+function ensureAbilityMapForLevel(lvl, list){ if(!lvl) return {}; const map = getAbilityMap(); map[lvl] = map[lvl] || {}; const prev = {...map[lvl]}; const ordered = {}; const cycle = ['初','中','高']; list.forEach((item, idx)=>{ if(prev[item]) ordered[item] = prev[item]; else ordered[item] = cycle[idx % cycle.length]; }); map[lvl] = ordered; saveAbilityMap(map); return map[lvl]; }
+function getAbilityFor(lvl, degree){ const m = getAbilityMap(); if(!m || !m[lvl]) return ''; return m[lvl][degree] || ''; }
+
+// ---------- 建議練習：預設與 storage（依等級分類） ----------
+const defaultPracticeTemplatesByLevel = {
+  "1":[
+    "靜態下滑",
+    "腳踝相撲",
+    "開機摔"
+    ],
+
+"2":[
+    "下肢旋轉",
+    "重心轉移",
+    "一彎二站",
+    "分離用刃"
+    ],
+
+"3":[
+    "一彎二站",
+    "下肢旋轉",
+    "重心轉移"
+    ],
+
+"4":[
+    "下肢旋轉",
+    "離桿換刃",
+    "換刃感受",
+    "直滑站姿",
+    "抹奶油"
+    ],
+
+"5":[
+    "旋轉抹奶油",
+    "擦板擦",
+    "離桿原地轉直"
+    ],
+
+"6":[
+    "Nike勾勾",
+    "強力落葉飄"
+    ],
+
+"7":[
+    "扶桿團身換刃",
+    "ER滾刃",
+    "扶桿慢速提換"
+    ]
+};
+
+function getPracticeTemplates(){
+  try {
+    const s = localStorage.getItem('practiceTemplates_v1');
+    return s ? JSON.parse(s) : null;
+  } catch(e){ return null; }
+}
+function savePracticeTemplates(obj){
+  try { localStorage.setItem('practiceTemplates_v1', JSON.stringify(obj)); } catch(e){}
+}
+function ensurePracticeTemplatesInitialized(){
+  let cur = getPracticeTemplates();
+  if(!cur || typeof cur !== 'object'){
+    // deep copy default
+    savePracticeTemplates(JSON.parse(JSON.stringify(defaultPracticeTemplatesByLevel)));
+    return;
+  }
+  let changed = false;
+  for(const lvl in defaultPracticeTemplatesByLevel){
+    if(!Array.isArray(cur[lvl]) || cur[lvl].length === 0){
+      cur[lvl] = [...defaultPracticeTemplatesByLevel[lvl]];
+      changed = true;
+    }
+  }
+  if(changed) savePracticeTemplates(cur);
+}
+
+// ---------- 需加強：預設與 storage（依等級分類） ----------
+const defaultNeedTemplatesByLevel = {
+  "1": ["剎車維持","站姿居中","板刃平衡"],
+  "2": ["角度控制","重心轉移"],
+  "3": ["重心轉換時機","腳踝控制"],
+  "4": ["持續旋轉","重心靠前腳","抬升壓力"],
+  "5": ["斜上路徑穩定","換刃動作","轉直能力"],
+  "6": ["下半圓壓力控制","加減壓時機"],
+  "7": ["團身收縮時機","小彎旋轉時機"]
+};
+
+function getNeedTemplates(){
+  try {
+    const s = localStorage.getItem('needTemplates_v1');
+    return s ? JSON.parse(s) : null;
+  } catch(e){ return null; }
+}
+function saveNeedTemplates(obj){
+  try { localStorage.setItem('needTemplates_v1', JSON.stringify(obj)); } catch(e){}
+}
+function ensureNeedTemplatesInitialized(){
+  let cur = getNeedTemplates();
+  if(!cur || typeof cur !== 'object'){
+    saveNeedTemplates(JSON.parse(JSON.stringify(defaultNeedTemplatesByLevel)));
+    return;
+  }
+  let changed = false;
+  for(const lvl in defaultNeedTemplatesByLevel){
+    if(!Array.isArray(cur[lvl]) || cur[lvl].length === 0){
+      cur[lvl] = [...defaultNeedTemplatesByLevel[lvl]];
+      changed = true;
+    }
+  }
+  if(changed) saveNeedTemplates(cur);
+}
+
+// ---------- DOM helper ----------
+const $ = id => document.getElementById(id);
+
+// ---------- 保存表單狀態 ----------
+let savedInputState = {};
+
+// ---------- load degree select for generator ----------
+function loadDegreeOptions(){
+  const lvl = $('level').value;
+  const sel = $('degreeSelect');
+  sel.innerHTML = '';
+  const opts = getDegreeOptions();
+  if(lvl && opts[lvl]){
+    sel.appendChild(new Option('請選擇程度',''));
+    // 若使用者已選擇「能力」，則僅顯示對應能力的詞條；若無對應則回退顯示全部
+    const ability = $('levelState') ? $('levelState').value : '';
+    const abilityMap = getAbilityMap();
+    let list = opts[lvl].slice();
+    if(ability){
+      const filtered = list.filter(o => abilityMap[lvl] && abilityMap[lvl][o] === ability);
+      if(filtered.length > 0) list = filtered;
+      else list = []; // 若沒有對應則暫時顯示空（使用者可改為不選擇能力）
+    }
+    if(list.length === 0 && !ability){
+      // 無能力篩選且無項目，顯示空訊息
+      sel.appendChild(new Option('目前無程度項目',''));
+    } else if(list.length === 0 && ability){
+      // 若篩選後沒有項目，提示並提供全部選項（fallback）
+      sel.appendChild(new Option('此能力無對應項目 - 顯示全部',''));
+      opts[lvl].forEach(o => sel.appendChild(new Option(o,o)));
+    } else {
+      list.forEach(o => sel.appendChild(new Option(o,o)));
+    }
+  } else {
+    sel.appendChild(new Option('請先選擇等級',''));
+  }
+}
+
+// ---------- load degree list for editor ----------
+function loadDegreeList(){
+  const lvlEl = $('editLevel');
+  if(!lvlEl) return;
+  const lvl = lvlEl.value;
+  const list = $('degreeList');
+  if(!list) return;
+  list.innerHTML = '';
+
+  // 確保 custom 存在（若沒有，初始化為 default copy）
+  const custom = getCustomOptions();
+  if(!custom[lvl] || !Array.isArray(custom[lvl]) || custom[lvl].length === 0){
+    custom[lvl] = defaultDegreeOptions[lvl] ? [...defaultDegreeOptions[lvl]] : [];
+    saveCustomOptions(custom);
+  }
+
+  const opts = custom[lvl];
+  // ensure ability mapping exists for this level (preserve existing mappings)
+  ensureAbilityMapForLevel(lvl, opts);
+  opts.forEach((opt, idx)=>{
+    const li = document.createElement('li');
+    li.className = 'degree-item';
+
+    // 能力分類按鈕
+    const abilityBtn = document.createElement('button');
+    abilityBtn.className = 'ability-btn';
+    const curMap = getAbilityMap();
+    const curAbility = (curMap[lvl] && curMap[lvl][opt]) ? curMap[lvl][opt] : '';
+    abilityBtn.textContent = curAbility || '初';
+    if(curAbility) abilityBtn.classList.add('active');
+    abilityBtn.title = '點擊以切換能力：初 / 中 / 高';
+    abilityBtn.addEventListener('click', ()=>{
+      const order = ['初','中','高'];
+      const cur = getAbilityFor(lvl, opt) || '初';
+      const next = order[(order.indexOf(cur) + 1) % order.length];
+      const m = getAbilityMap(); m[lvl] = m[lvl] || {}; m[lvl][opt] = next; saveAbilityMap(m);
+      abilityBtn.textContent = next; abilityBtn.classList.add('active');
+      try{ loadDegreeOptions(); }catch(e){}
+    });
+
+    const span = document.createElement('span');
+    span.textContent = opt;
+    span.title = '雙擊編輯';
+
+    // 內嵌編輯：雙擊後以 input 取代 span，Enter/blur 儲存，Esc 取消
+    span.addEventListener('dblclick', ()=>{
+      if(li.querySelector('input')) return;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = opt;
+      input.style.width = '100%';
+      input.style.padding = '6px';
+      input.style.borderRadius = '6px';
+      input.style.border = '1px solid #ccc';
+      li.replaceChild(input, span);
+      input.focus();
+      input.select();
+
+      const cancel = ()=>{ if(li.contains(input)) li.replaceChild(span, input); };
+
+      const save = ()=>{
+        const v = input.value.trim();
+        if(v === ''){ alert('內容不可為空'); input.focus(); return; }
+        const cur = getCustomOptions();
+        cur[lvl] = cur[lvl] || [...(defaultDegreeOptions[lvl] || [])];
+        const oldKey = opt;
+        cur[lvl][idx] = v;
+        saveCustomOptions(cur);
+        // sync ability mapping: move old key mapping to new key
+        const amap = getAbilityMap(); amap[lvl] = amap[lvl] || {};
+        amap[lvl][v] = amap[lvl][oldKey] || '中';
+        if(amap[lvl][oldKey]) delete amap[lvl][oldKey];
+        saveAbilityMap(amap);
+        loadDegreeList();
+        loadDegreeOptions();
+      };
+
+      input.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); save(); } else if(e.key === 'Escape'){ e.preventDefault(); cancel(); } });
+      input.addEventListener('blur', ()=>{ if(input.value.trim() === opt) cancel(); else save(); });
+    });
+
+    const btn = document.createElement('button');
+    btn.textContent = '✕';
+    btn.onclick = ()=>{
+      if(!confirm('刪除此詞條？')) return;
+      const cur = getCustomOptions();
+      cur[lvl] = cur[lvl].filter((_,i)=>i!==idx);
+      saveCustomOptions(cur);
+      // remove ability mapping for deleted item
+      const amap = getAbilityMap(); if(amap[lvl] && amap[lvl][opt]){ delete amap[lvl][opt]; saveAbilityMap(amap); }
+      loadDegreeList();
+      loadDegreeOptions();
+    };
+
+    li.appendChild(abilityBtn);
+    li.appendChild(span);
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+
+  // enable drag reorder
+  try {
+    Sortable.create(list, {
+      animation:150,
+      onEnd: function(){
+        const newOrder = Array.from(list.querySelectorAll('li span')).map(s=>s.textContent);
+        const cur = getCustomOptions();
+        cur[$('editLevel').value] = newOrder;
+        saveCustomOptions(cur);
+        loadDegreeOptions();
+      }
+    });
+  } catch(e){}
+}
+
+// ---------- add degree ----------
+$('addDegreeBtn').onclick = ()=>{
+  const txt = $('newDegree').value.trim(); if(!txt) return alert('請輸入詞條');
+  const lvl = $('editLevel').value;
+  const custom = getCustomOptions(); const merged = getDegreeOptions(); merged[lvl] = merged[lvl] || []; merged[lvl].push(txt); custom[lvl] = merged[lvl]; saveCustomOptions(custom);
+  // 新增時給予預設能力（中）
+  const amap = getAbilityMap(); amap[lvl] = amap[lvl] || {}; amap[lvl][txt] = '中'; saveAbilityMap(amap);
+  $('newDegree').value = '';
+  loadDegreeList(); loadDegreeOptions();
+};
+
+// ---------- tabs ----------
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick = ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const tab = t.dataset.tab;
+    $('generatorTab').style.display = tab === 'generator' ? 'block' : 'none';
+    $('editorTab').style.display = tab === 'editor' ? 'block' : 'none';
+    $('practiceTab').style.display = tab === 'practice' ? 'block' : 'none';
+    $('needTab').style.display = tab === 'need' ? 'block' : 'none';
+    $('helpTab').style.display = tab === 'help' ? 'block' : 'none';
+    if(tab === 'editor') loadDegreeList();
+    if(tab === 'practice') loadPracticeList();
+    if(tab === 'need') loadNeedList();
+  };
+});
+
+// ---------- events ----------
+$('level').addEventListener('change', ()=>{ loadDegreeOptions(); toggleSkillsDisplay(); });
+$('editLevel').addEventListener('change', loadDegreeList);
+// 當能力改變時，重新載入程度選單以進行過濾
+if(document.getElementById('levelState')){
+  document.getElementById('levelState').addEventListener('change', ()=>{ loadDegreeOptions(); });
+}
+// 選擇程度時，同步能力選單（若該詞條有對應能力）
+if(document.getElementById('degreeSelect')){
+  document.getElementById('degreeSelect').addEventListener('change', ()=>{
+    const lvl = $('level') ? $('level').value : '';
+    const val = $('degreeSelect') ? $('degreeSelect').value : '';
+    if(lvl && val){ const ab = getAbilityFor(lvl, val); if(ab) $('levelState').value = ab; }
+  });
+}
+
+// 切換必要技能 / 核心技能 顯示：等級 1-4 顯示必要技能；等級 7 顯示核心技能；其他隱藏
+function toggleSkillsDisplay(){
+  const lvl = $('level') ? $('level').value : '';
+  const req = document.getElementById('requiredSkills');
+  const core = document.getElementById('coreSkills');
+  const lbl = document.getElementById('skillsLabel');
+  const btnAll = document.getElementById('toggleRequiredAllBtn'); // 新增：取得「清除」按鈕
+  if(!req || !core || !lbl) return;
+
+  if(['1','2','3','4'].includes(lvl)){
+    lbl.textContent = '必要技能';
+    lbl.style.display = 'block';
+    req.style.display = 'block';
+    // 顯示所有欄位
+    adjustRequiredColumns('all');
+    core.style.display = 'none';
+    if(btnAll) btnAll.style.display = ''; // 顯示按鈕（恢復原始顯示）
+  } else if(lvl === '5'){
+    // 等級5：顯示「必要技能」但僅顯示四級欄位
+    lbl.textContent = '必要技能';
+    lbl.style.display = 'block';
+    req.style.display = 'block';
+    adjustRequiredColumns('four');
+    core.style.display = 'none';
+    if(btnAll) btnAll.style.display = ''; // 顯示按鈕
+  } else if(lvl === '7'){
+    lbl.textContent = '核心技能';
+    lbl.style.display = 'block';
+    req.style.display = 'none';
+    core.style.display = 'block';
+    if(btnAll) btnAll.style.display = 'none'; // 等級7 隱藏清除按鈕
+  } else {
+    lbl.style.display = 'none';
+    req.style.display = 'none';
+    core.style.display = 'none';
+    if(btnAll) btnAll.style.display = 'none'; // 預設或其他等級隱藏按鈕
+  }
+
+  // 顯示反腳勾選：只在等級 4-7 顯示
+  const revWrap = document.getElementById('reverseFootWrap');
+  if(revWrap) revWrap.style.display = ['4','5','6','7'].includes(lvl) ? '' : 'none';
+}
+
+// 調整必要技能表格的可見欄位
+function adjustRequiredColumns(mode){
+  const table = document.querySelector('#requiredSkills table');
+  if(!table) return;
+  const ths = table.querySelectorAll('thead th');
+  const tds = table.querySelectorAll('tbody tr');
+  if(mode === 'all'){
+    ths.forEach(th=> th.style.display = '');
+    tds.forEach(tr=> Array.from(tr.children).forEach(td=> td.style.display = ''));
+  } else if(mode === 'four'){
+    // 隱藏第一、第二欄，仅顯示第三（四級）
+    ths.forEach((th,i)=> th.style.display = (i===2 ? '' : 'none'));
+    tds.forEach(tr=> Array.from(tr.children).forEach((td,i)=> td.style.display = (i===2 ? '' : 'none')));
+  }
+}
+
+// ---------- export / import ----------
+$('exportBtn').onclick = ()=>{ const data = getCustomOptions(); const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'degreeOptions.json'; a.click(); };
+$('importBtn').onclick = ()=>{ const input = document.createElement('input'); input.type = 'file'; input.accept = 'application/json'; input.onchange = ()=>{ const f = input.files[0]; const r = new FileReader(); r.onload = ()=>{ try{ const parsed = JSON.parse(r.result); saveCustomOptions(parsed); // initialize ability map for imported data
+        try{ for(const lv in parsed){ ensureAbilityMapForLevel(lv, parsed[lv] || []); } }catch(e){}
+        loadDegreeList(); loadDegreeOptions(); alert('匯入成功'); }catch(e){ alert('格式錯誤'); } }; r.readAsText(f); }; input.click(); };
+
+// ---------- reset to default (clear custom) ----------
+$('resetDefaultBtn').onclick = ()=>{
+  if(!confirm('確定要重置為預設？此動作會刪除自訂資料')) return;
+  localStorage.removeItem('customDegreeOptions');
+  const custom = {};
+  for(const lvl in defaultDegreeOptions) custom[lvl] = [...defaultDegreeOptions[lvl]];
+  saveCustomOptions(custom);
+  // 初始化 ability map
+  for(const lv in custom){ try{ ensureAbilityMapForLevel(lv, custom[lv] || []); }catch(e){} }
+  loadDegreeList();
+  loadDegreeOptions();
+  alert('已重置為預設');
+};
+
+// ---------- ability export / import / defaults ----------
+$('exportAbilityBtn').onclick = ()=>{
+  try{
+    const data = getAbilityMap() || {};
+    const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'abilityMap.json'; a.click();
+  }catch(e){ alert('匯出失敗'); }
+};
+
+$('importAbilityBtn').onclick = ()=>{
+  const input = document.createElement('input'); input.type = 'file'; input.accept = 'application/json'; input.onchange = ()=>{
+    const f = input.files[0]; const r = new FileReader(); r.onload = ()=>{
+      try{
+        const parsed = JSON.parse(r.result);
+        // validate basic shape: object of levels -> object
+        if(typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('格式不正確');
+        saveAbilityMap(parsed);
+        // ensure mapping aligns with current degree lists
+        try{ const all = getDegreeOptions(); for(const lv in all){ ensureAbilityMapForLevel(lv, all[lv] || []); } }catch(e){}
+        loadDegreeList(); loadDegreeOptions(); alert('能力匯入成功');
+      }catch(e){ alert('匯入失敗：格式錯誤'); }
+    };
+    r.readAsText(f);
+  };
+  input.click();
+};
+
+$('setAbilityDefaultBtn').onclick = ()=>{
+  if(!confirm('將目前能力設定儲存為預設？')) return;
+  try{ const cur = getAbilityMap(); localStorage.setItem('defaultDegreeAbilityMap_v1', JSON.stringify(cur)); alert('已儲存為能力預設'); }catch(e){ alert('儲存失敗'); }
+};
+
+$('restoreAbilityDefaultBtn').onclick = ()=>{
+  const s = localStorage.getItem('defaultDegreeAbilityMap_v1');
+  if(!s) return alert('尚無能力預設可還原');
+  if(!confirm('確定要用已儲存的能力預設覆蓋目前設定？')) return;
+  try{ localStorage.setItem('degreeAbilityMap_v1', s); loadDegreeList(); loadDegreeOptions(); alert('已還原能力預設'); }catch(e){ alert('還原失敗'); }
+};
+
+// ---------- Google Sheet sync (CSV) ----------
+function columnLetterToIndex(col){ let idx=0; for(let i=0;i<col.length;i++){ idx = idx*26 + (col.charCodeAt(i)-64); } return idx; }
+function parseCSV(text){ const rows = text.split(/\r?\n/).map(r=>r.replace(/\uFEFF/g,'')).filter((r,i)=> !(r.trim()==='' && i>10000)); return rows.map(r=>{
+  // simple CSV split (handles commas inside quotes)
+  const arr=[]; let cur=''; let inQ=false; for(let i=0;i<r.length;i++){ const ch=r[i]; if(ch==='"'){ if(inQ && r[i+1]==='"'){ cur+='"'; i++; } else inQ=!inQ; } else if(ch===',' && !inQ){ arr.push(cur); cur=''; } else cur+=ch; } arr.push(cur); return arr; }); }
+
+function parseA1Range(range){ // e.g. B2:B10 or C2:C10
+  const parts = range.split(':'); const a=parts[0]; const b=parts[1]||parts[0];
+  const m1 = a.match(/^([A-Z]+)(\d+)$/i); const m2 = b.match(/^([A-Z]+)(\d+)$/i);
+  if(!m1||!m2) return null; const c1 = m1[1].toUpperCase(), r1 = parseInt(m1[2],10); const c2 = m2[1].toUpperCase(), r2 = parseInt(m2[2],10);
+  return {startCol:columnLetterToIndex(c1), endCol:columnLetterToIndex(c2), startRow:r1, endRow:r2};
+}
+
+function getCell(grid, colIdx, rowIdx){ // colIdx and rowIdx are 1-based
+  if(!grid[rowIdx-1]) return ''; const row = grid[rowIdx-1]; return row[colIdx-1] || '';
+}
+
+function applySheetMappingsFromCSV(sheetCsvText){
+  const grid = parseCSV(sheetCsvText);
+  // mapping rules provided by user
+  const mappingRules = [
+    {range:'B2:B10', level:'1', ability:'初'},
+    {range:'C2:C10', level:'2', ability:'初'},
+    {range:'D2:D10', level:'3', ability:'初'},
+    {range:'E2:E10', level:'4', ability:'初'},
+    {range:'F2:F10', level:'5', ability:'初'},
+    {range:'G2:G10', level:'6', ability:'初'},
+
+    {range:'B11:B20', level:'1', ability:'中'},
+    {range:'C11:C20', level:'2', ability:'中'},
+    {range:'D11:D20', level:'3', ability:'中'},
+    {range:'E11:E20', level:'4', ability:'中'},
+    {range:'F11:F20', level:'5', ability:'中'},
+    {range:'G11:G20', level:'6', ability:'中'},
+
+    {range:'B21:B30', level:'1', ability:'高'},
+    {range:'C21:C30', level:'2', ability:'高'},
+    {range:'D21:D30', level:'3', ability:'高'},
+    {range:'E21:E30', level:'4', ability:'高'},
+    {range:'F21:F30', level:'5', ability:'高'},
+    {range:'G21:G30', level:'6', ability:'高'}
+    
+  ];
+
+  const result = {};
+  const abilityMap = getAbilityMap();
+  mappingRules.forEach(rule=>{
+    const r = parseA1Range(rule.range);
+    if(!r) return;
+    for(let rr=r.startRow; rr<=r.endRow; rr++){
+      for(let cc=r.startCol; cc<=r.endCol; cc++){
+        const val = (getCell(grid, cc, rr) || '').toString().trim();
+        if(!val) continue;
+        result[rule.level] = result[rule.level] || [];
+        result[rule.level].push({t: val, a: rule.ability});
+        abilityMap[rule.level] = abilityMap[rule.level] || {};
+        abilityMap[rule.level][val] = rule.ability;
+      }
+    }
+  });
+
+  // write to storage: customDegreeOptions and ability map
+  const custom = getCustomOptions();
+  for(const lv in result){ custom[lv] = result[lv].map(x=>x.t); }
+  saveCustomOptions(custom);
+  saveAbilityMap(abilityMap);
+  // reload UI
+  loadDegreeList(); loadDegreeOptions();
+  alert('已從 Google Sheet 同步完成（使用預設範圍規則）');
+}
+
+function fetchSheetCsv(sheetId, gid){ const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`; return fetch(url).then(r=>{ if(!r.ok) throw new Error('fetch failed'); return r.text(); }); }
+
+document.getElementById('syncSheetBtn').addEventListener('click', ()=>{
+  const sid = document.getElementById('sheetIdInput').value.trim(); const gid = document.getElementById('sheetGidInput').value.trim() || '0'; if(!sid) return alert('請輸入 sheet id');
+  fetchSheetCsv(sid, gid).then(txt=> applySheetMappingsFromCSV(txt)).catch(e=>{ console.error(e); alert('無法讀取 Google Sheet，請確認權限與 ID/gid'); });
+});
+
+// ---------- tri-state checkbox init (保留現有邏輯) ----------
+let activeRemark = null;
+const $selectedRemarkName = () => document.getElementById('selectedRemarkName');
+const $selectedRemarkState = () => document.getElementById('selectedRemarkState');
+function updateRemarkControlUI(){
+  const nameEl = $selectedRemarkName();
+  const stateEl = $selectedRemarkState();
+  if(!activeRemark){
+    if(nameEl) nameEl.textContent = '（尚未選取）';
+    if(stateEl) stateEl.textContent = '目前狀態：未勾選';
+    return;
+  }
+  const raw = activeRemark.value || '';
+  if(nameEl) nameEl.textContent = raw;
+  const st = activeRemark.dataset.state || (activeRemark.checked ? 'yes' : 'no');
+  if(stateEl) stateEl.textContent = '目前狀態：' + (st === 'yes' ? '已勾選 (checked)' : (st === 'half' ? '不確定 (indeterminate)' : '未勾選 (unchecked)'));
+}
+
+function setRemarkStateFor(el, state){
+  if(!el) return;
+  if(state === 'yes'){ el.checked = true; el.indeterminate = false; el.dataset.state = 'yes'; }
+  else if(state === 'half'){ el.checked = false; el.indeterminate = true; el.dataset.state = 'half'; }
+  else { el.checked = false; el.indeterminate = false; el.dataset.state = 'no'; }
+  if(activeRemark === el) updateRemarkControlUI();
+  // 變更必要技能狀態時立即更新評語預覽
+  try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+}
+
+function initTriStateRemarks(){
+  document.querySelectorAll('.remark').forEach(r=>{
+    if(r.tagName !== 'INPUT') return;
+    const isTri = r.dataset.tristate === 'true' || r.dataset.tristate === '1';
+    r.tabIndex = 0;
+    if(!r.dataset.state) r.dataset.state = r.checked ? 'yes' : 'no';
+
+    const applyState = (s)=>{
+      if(isTri){
+        if(s === 'yes'){ r.checked = true; r.indeterminate = false; }
+        else if(s === 'half'){ r.checked = false; r.indeterminate = true; }
+        else { r.checked = false; r.indeterminate = false; }
+        r.dataset.state = s;
+      } else {
+        if(s === 'yes'){ r.checked = true; r.indeterminate = false; r.dataset.state = 'yes'; }
+        else { r.checked = false; r.indeterminate = false; r.dataset.state = 'no'; }
+      }
+      if(activeRemark === r) updateRemarkControlUI();
+      // tri-state 或勾選狀態改變也觸發自動產生
+      try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+    };
+
+    applyState(r.dataset.state);
+
+    const parentLabel = r.closest('label') || r.parentElement;
+    if(parentLabel){
+      parentLabel.addEventListener('click', (e)=>{
+        if(isTri){
+          e.preventDefault();
+          activeRemark = r;
+          updateRemarkControlUI();
+        } else {
+          activeRemark = r;
+          setTimeout(()=>{ r.dataset.state = r.checked ? 'yes' : 'no'; if(activeRemark===r) updateRemarkControlUI(); }, 0);
+        }
+      });
+    }
+
+    r.addEventListener('focus', ()=>{ activeRemark = r; updateRemarkControlUI(); });
+
+    if(isTri){
+      // 針對「下桿開機」強制使用 no -> yes -> half 的循環順序，其他三態維持預設順序
+      const defaultCycle = ['no','yes','half']; // 預設循環（不改變其他項目）
+      const cycle = (r.value === '下桿開機') ? ['no','yes','half'] : defaultCycle;
+
+      r.addEventListener('mousedown', (e)=>{
+        e.preventDefault();
+        activeRemark = r;
+        const cur = r.dataset.state || (r.checked ? 'yes' : 'no');
+        const idx = cycle.indexOf(cur);
+        const next = cycle[(idx + 1) % cycle.length];
+        applyState(next);
+        updateRemarkControlUI();
+      });
+      r.addEventListener('keydown', (e)=>{
+        if(e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter'){
+          e.preventDefault();
+          activeRemark = r;
+          const cur = r.dataset.state || (r.checked ? 'yes' : 'no');
+          const idx = cycle.indexOf(cur);
+          const next = cycle[(idx + 1) % cycle.length];
+          applyState(next);
+          updateRemarkControlUI();
+        }
+      });
+    } else {
+      r.addEventListener('change', ()=>{
+        r.dataset.state = r.checked ? 'yes' : 'no';
+        if(activeRemark === r) updateRemarkControlUI();
+        // 勾選變動後立即更新預覽，避免與其他同步行為發生 race condition
+        try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+      });
+    }
+  });
+
+  const setupControls = ()=>{
+    const btnU = document.getElementById('setUnchecked');
+    const btnC = document.getElementById('setChecked');
+    const btnH = document.getElementById('setIndet');
+    if(btnU) btnU.onclick = ()=>{ if(activeRemark) setRemarkStateFor(activeRemark, 'no'); else alert('請先點選一個必要技能'); };
+    if(btnC) btnC.onclick = ()=>{ if(activeRemark) setRemarkStateFor(activeRemark, 'yes'); else alert('請先點選一個必要技能'); };
+    if(btnH) btnH.onclick = ()=>{ if(!activeRemark) return alert('請先點選一個必要技能'); const isTri = activeRemark.dataset.tristate === 'true' || activeRemark.dataset.tristate === '1'; if(!isTri) return alert('此項不支援「不確定」狀態'); setRemarkStateFor(activeRemark, 'half'); };
+  };
+  setupControls();
+  updateRemarkControlUI();
+}
+
+// 在 initTriStateRemarks() 定義後加入以下函式與綁定（已修正判斷邏輯，避免只會取消勾選的問題）
+function toggleAllRequired(){
+  // 清除所有必要技能（將所有 input.remark 設為未勾選）
+  const remarks = Array.from(document.querySelectorAll('#requiredSkills .remark')).filter(r => r.tagName === 'INPUT');
+  if(!remarks.length) return;
+  remarks.forEach(r => setRemarkStateFor(r, 'no'));
+}
+
+function toggleColumn1(){
+  // 勾選一級欄位內所有項目（僅處理第一欄的 input.remark）
+  const elems = Array.from(document.querySelectorAll('#requiredSkills tbody tr td:nth-child(1) .remark')).filter(r => r.tagName === 'INPUT');
+  if(!elems.length) return;
+  elems.forEach(r => setRemarkStateFor(r, 'yes'));
+}
+
+// 綁定按鈕（在 DOM ready / load 時會綁定，這邊保險放在 window load 初始化段落）
+window.addEventListener('load', ()=>{
+  const sheetId = '1kx9lS69H_ldkeKt3Nww_k65z8IMcRgTlm86uFJtdViA';
+  const sheetGid = '0';
+
+  const continueInit = ()=>{
+    const custom = getCustomOptions();
+    let changed = false;
+    for(const lvl in defaultDegreeOptions){
+      if(!custom[lvl] || !Array.isArray(custom[lvl]) || custom[lvl].length === 0){
+        custom[lvl] = [...defaultDegreeOptions[lvl]];
+        changed = true;
+      }
+    }
+    if(changed) saveCustomOptions(custom);
+
+    // 初始化 ability map 與現有 custom 清單對齊
+    for(const lv in custom){ try{ ensureAbilityMapForLevel(lv, custom[lv] || []); }catch(e){} }
+
+    loadDegreeOptions();
+    // Editor is hidden; do not call loadDegreeList() to avoid unnecessary operations
+    ensurePracticeTemplatesInitialized();
+    loadPracticeList();
+    renderPracticeQuickButtons();
+    initTriStateRemarks();
+    toggleSkillsDisplay();
+
+    // 綁定新增的按鈕（若存在）
+    const btnAll = document.getElementById('toggleRequiredAllBtn');
+    if(btnAll) btnAll.addEventListener('click', (e)=>{ e.preventDefault(); toggleAllRequired(); });
+
+    const btnL1 = document.getElementById('toggleLevel1Btn');
+    if(btnL1) btnL1.addEventListener('click', (e)=>{ e.preventDefault(); toggleColumn1(); });
+
+    // 綁定：核心技能「恢復預設」按鈕（將所有欄位設為 'I'）
+    const restoreCoreBtn = document.getElementById('restoreCoreDefaultsBtn');
+    if(restoreCoreBtn){
+      restoreCoreBtn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        const cols = document.querySelectorAll('#skillBlockCore .skill-col');
+        if(!cols || cols.length === 0) return;
+        const arr = Array.from(cols).map(()=> 'I');
+        applyCoreStateArray(arr);
+        showToast('核心技能已恢復預設 (I)');
+      });
+    }
+  };
+
+  // 先嘗試自動從 Google Sheet 抓取並套用；失敗則退回原本 localStorage/default 初始化
+  fetchSheetCsv(sheetId, sheetGid).then(txt=>{
+    try{ applySheetMappingsFromCSV(txt); }catch(e){ console.warn('apply sheet failed', e); }
+  }).catch(e=>{
+    console.warn('fetch sheet failed, fallback to local defaults', e);
+  }).finally(()=>{
+    continueInit();
+  });
+});
+
+// ---------- generate remark output (遵循等級規則) ----------
+// 規則：1-4 包含必要技能；5-6 不包含必要技能；7 包含核心技能（不包含必要技能）
+function generatePreview(){
+  const level = $('level').value.trim();
+  const rating = $('rating').value.trim();
+  const state = $('levelState').value.trim();
+  const type = $('type').value.trim();
+  const char = $('character').value.trim();
+  const degree = $('degreeSelect').value.trim();
+  const need = $('needImprove').value.trim();
+  const practice = $('practice').value.trim();
+  const otherNotes = $('otherNotes') ? $('otherNotes').value.trim() : '';
+  const reverseFootChecked = $('reverseFoot') ? !!$('reverseFoot').checked : false;
+
+  if(!level || !state || !degree){
+    // 不彈出 alert 造成打斷，自動觸發情境僅更新 preview 為提示文字
+    $('preview').textContent = '請選擇 等級、能力 與 程度（為必填項）';
+    return;
+  }
+
+  const includeRequired = ['1','2','3','4','5'].includes(level);
+  const includeCore = level === '7';
+
+  // 準備 coreParts（不論是否包含，都讀取目前選項以便 UI 顯示/儲存）
+  const coreShort = ["提","強","小","團","團小"];
+  const corePartsAll = [];
+  document.querySelectorAll('#skillBlockCore .skill-col').forEach((col,i)=>{
+    const a = col.querySelector('button.active');
+    if(a) corePartsAll.push(coreShort[i] + a.textContent);
+  });
+
+  // 準備 required remark texts（僅當 includeRequired 為 true 才使用）
+  let remarkElems = [];
+  if(includeRequired){
+    if(level === '5'){
+      remarkElems = Array.from(document.querySelectorAll('#requiredSkills tbody tr td:nth-child(3) .remark'));
+    } else {
+      remarkElems = Array.from(document.querySelectorAll('#requiredSkills .remark'));
+    }
+  } else {
+    remarkElems = [];
+  }
+  const remarkTexts = remarkElems.map(r=>{
+    if(r.tagName === 'INPUT'){
+      const raw = r.value.trim();
+      const short = remarkMap[raw] || raw;
+      const st = r.dataset.state || (r.checked ? 'yes' : 'no');
+      const suffix = st === 'yes' ? 'O' : (st === 'half' ? '△' : 'X');
+      return `${short}${suffix}`;
+    }
+    return '';
+  }).filter(Boolean);
+
+  const parts = [];
+  if(rating && rating !== '未評級'){
+    parts.push(`${rating}，${state}`);
+  } else {
+    parts.push(state);
+  }
+  if(type) parts.push(type);
+  if(char) parts.push(char);
+  if(reverseFootChecked){
+    if(parts.length){
+      parts[0] = parts[0] + '，反腳';
+    } else {
+      parts.push('反腳');
+    }
+  }
+  parts.push(`程度：${degree}`);
+  if(need) parts.push(`需加強：${need}`);
+  if(practice) parts.push(`建議練習：${practice}`);
+  if(otherNotes) parts.push(otherNotes);
+
+  let corePrefix = '';
+  if(includeCore && corePartsAll.length){
+    corePrefix = corePartsAll.join(' ');
+  }
+  let body = parts.join(' ///');
+  if(remarkTexts.length) body += ' ///' + remarkTexts.join(' ');
+  let final = body;
+  if(corePrefix) final = corePrefix + (body ? ' ///' + body : '');
+
+  $('preview').textContent = final || '尚未產生評語。';
+  if($('coreOutput')) $('coreOutput').textContent = corePartsAll.join(' ');
+}
+
+// 綁定原本按鈕行為（按鈕仍存在但會隱藏）
+if($('genBtn')) $('genBtn').onclick = generatePreview;
+
+// 隱藏「產生評語」與「清空輸入」按鈕（保留 copy 按鈕）
+if($('genBtn')) $('genBtn').style.display = 'none';
+if($('toggleResetRestoreBtn')) $('toggleResetRestoreBtn').style.display = 'none';
+
+// 全域自動觸發：監聽 change/input 以即時更新產生結果
+document.addEventListener('change', (e)=>{
+  const t = e && e.target;
+  if(!t) return;
+  if(t.matches && (t.matches('select') || t.matches('input') || t.matches('textarea'))){
+    generatePreview();
+  }
+}, true);
+document.addEventListener('input', (e)=>{ const t = e && e.target; if(!t) return; if(t.matches && (t.matches('textarea') || (t.matches('input') && (t.type==='text' || t.type==='search' || t.type==='tel' || t.type==='url')))) generatePreview(); }, true);
+
+// ---------- 清空/恢復（合併按鈕） ----------
+let isCleared = false;
+let _clearedMonitorActive = false;
+// 移除舊單一 handler，改為三個專屬 handler
+let _clearedMonitorHandlerSelect = null;
+let _clearedMonitorHandlerInput = null;
+let _clearedMonitorHandlerClickSkill = null;
+
+function startClearedMonitor(){
+  if(_clearedMonitorActive) return;
+
+  // 取消復原（restore）的共用行為
+  const cancelRestore = ()=>{
+    if(!isCleared) return;
+    const btn = $('toggleResetRestoreBtn');
+    if(btn){
+      btn.textContent = '清空輸入';
+      btn.classList.remove('restore'); btn.classList.add('clear');
+    }
+    // 清除暫存狀態
+    savedInputState = {};
+    try{ sessionStorage.removeItem('savedInputState_v1'); }catch(e){}
+    isCleared = false;
+    stopClearedMonitor();
+  };
+
+  // 1) 監聽 select 的 change（使用 capturing 可早一點處理）
+  _clearedMonitorHandlerSelect = (e)=>{
+    const t = e && e.target;
+    if(!t) return;
+    if(t.tagName === 'SELECT') cancelRestore();
+  };
+  document.addEventListener('change', _clearedMonitorHandlerSelect, true);
+
+  // 2) 監聽指定文字欄位的 input（需加強 / 建議練習 以及編輯頁可能的輸入欄）
+  _clearedMonitorHandlerInput = (e)=>{
+    const t = e && e.target;
+    if(!t) return;
+    const targetIds = ['needImprove','practice','otherNotes','reverseFoot','newNeed','newPractice','newDegree'];
+    if(t.tagName === 'TEXTAREA' || t.tagName === 'INPUT'){
+      if(targetIds.includes(t.id)) cancelRestore();
+    }
+  };
+  document.addEventListener('input', _clearedMonitorHandlerInput, true);
+
+  // 3) 監聽必要技能 或 核心技能 的點擊（checkbox 或 core skill button）
+  _clearedMonitorHandlerClickSkill = (e)=>{
+    const t = e && e.target;
+    if(!t) return;
+    // 如果點擊發生在 #requiredSkills 或 #coreSkills / #skillBlockCore 區域內，視為互動
+    if(t.closest && (t.closest('#requiredSkills') || t.closest('#coreSkills') || t.closest('#skillBlockCore'))){
+      cancelRestore();
+    }
+    // 另外若直接點到 input.remark 也處理（保險）
+    if(t.classList && t.classList.contains && t.classList.contains('remark')){
+      cancelRestore();
+    }
+  };
+  document.addEventListener('click', _clearedMonitorHandlerClickSkill, true);
+
+  _clearedMonitorActive = true;
+}
+
+function stopClearedMonitor(){
+  if(!_clearedMonitorActive) return;
+  if(_clearedMonitorHandlerSelect) { document.removeEventListener('change', _clearedMonitorHandlerSelect, true); _clearedMonitorHandlerSelect = null; }
+  if(_clearedMonitorHandlerInput) { document.removeEventListener('input', _clearedMonitorHandlerInput, true); _clearedMonitorHandlerInput = null; }
+  if(_clearedMonitorHandlerClickSkill) { document.removeEventListener('click', _clearedMonitorHandlerClickSkill, true); _clearedMonitorHandlerClickSkill = null; }
+  _clearedMonitorActive = false;
+}
+
+// ---------- copy with check + toast ----------
+function showCopyCheck(){ const chk = $('copyCheck'); if(!chk) return; chk.style.opacity = '1'; setTimeout(()=>{ chk.style.opacity = '0'; }, 1000); }
+function showToast(msg){ const t = $('toast'); if(!t) return; t.textContent = msg; t.classList.add('show'); setTimeout(()=> t.classList.remove('show'), 1000); }
+$('copyBtn').onclick = ()=>{ const text = $('preview').textContent || ''; navigator.clipboard.writeText(text).then(()=>{ showCopyCheck(); showToast('已複製'); }).catch(()=>{ alert('複製失敗'); }); };
+
+/* ---------- 核心技能（等級7）面板 初始化：兩列排列 I/IA 與 A/AC/C，儲存/載入狀態 ---------- */
+(function initCoreSkills(){
+  const skillNames = ["提早換刃","強壯站姿","小轉","團身","團身小轉"];
+  const shortNames = ["提","強","小","團","團小"];
+  const levels = ["I","IA","A","AC","C"];
+  const container = document.getElementById('skillBlockCore');
+  if(!container) return;
+
+  container.innerHTML = '';
+  skillNames.forEach((name,i)=>{
+    const col = document.createElement('div');
+    col.className = 'skill-col';
+    col.innerHTML = `<div class="skill-name">${name}</div>`;
+    const btnGroup = document.createElement('div');
+    btnGroup.className = 'skill-buttons';
+    const row1 = document.createElement('div'); row1.className = 'skill-row';
+    const row2 = document.createElement('div'); row2.className = 'skill-row';
+    // create buttons: first two in row1, rest in row2
+    levels.forEach((lv, idx)=>{
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = lv;
+      btn.onclick = ()=>{
+        col.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        // 變更時也立即儲存到 localStorage
+        const st = {};
+        container.querySelectorAll('.skill-col').forEach((c,j)=>{
+          const s = c.querySelector('button.active');
+          st[j] = s ? s.textContent : '';
+        });
+        localStorage.setItem('coreSkillState_v1', JSON.stringify(st));
+        // 立即更新預覽（自動產生）
+        try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+      };
+      if(idx < 2) row1.appendChild(btn);
+      else row2.appendChild(btn);
+    });
+    btnGroup.appendChild(row1);
+    btnGroup.appendChild(row2);
+    col.appendChild(btnGroup);
+    container.appendChild(col);
+  });
+
+  // load state
+  const saved = JSON.parse(localStorage.getItem('coreSkillState_v1') || '{}');
+  const arr = [];
+  container.querySelectorAll('.skill-col').forEach((col,i)=>{
+    arr[i] = saved[i] || '';
+  });
+  // 若 localStorage 無值，預設為 I（第一個）
+  const hasAny = arr.some(v=>v && v.length);
+  applyCoreStateArray(hasAny ? arr : Array(container.querySelectorAll('.skill-col').length).fill('I'));
+
+  // 移除舊有「產生核心技能摘要」按鈕與 coreOutput（若存在），因為你要刪掉這些 UI
+  const genCoreBtn = document.getElementById('generateCore');
+  if(genCoreBtn) genCoret.remove();
+  const coreOutEl = document.getElementById('coreOutput');
+  if(coreOutEl) coreOutEl.remove();
+
+})();
+
+/* ---------- 共用：套用核心技能狀態陣列並儲存 ---------- */
+function applyCoreStateArray(arr){
+  const cols = document.querySelectorAll('#skillBlockCore .skill-col');
+  if(!cols || cols.length === 0) return;
+  cols.forEach((col,i)=>{
+    const btns = Array.from(col.querySelectorAll('button'));
+    btns.forEach(b=>b.classList.remove('active'));
+    // 依傳入值找按鈕，若無則預設第一個 (I)
+    const want = arr && typeof arr[i] === 'string' && arr[i] ? arr[i] : 'I';
+    const target = btns.find(b=>b.textContent === want) || btns[0];
+    if(target) target.classList.add('active');
+  });
+  // 儲存到 localStorage（與原本 saveCoreState 行為一致）
+  const state = {};
+  document.querySelectorAll('#skillBlockCore .skill-col').forEach((col,i)=>{
+    const sel = col.querySelector('button.active');
+    state[i] = sel ? sel.textContent : '';
+  });
+  localStorage.setItem('coreSkillState_v1', JSON.stringify(state));
+  // 變更核心技能狀態時立即更新評語預覽
+  try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+}
+
+// ---------- 建議練習：載入 / 編輯 / 刪除 / 排序（editor 分頁使用） ----------
+function loadPracticeList(){
+  ensurePracticeTemplatesInitialized();
+  const lvlEl = $('editPracticeLevel');
+  if(!lvlEl) return;
+  const lvl = lvlEl.value || '1';
+  const listEl = $('practiceList');
+  if(!listEl) return;
+  listEl.innerHTML = '';
+
+  const all = getPracticeTemplates() || {};
+  all[lvl] = Array.isArray(all[lvl]) ? all[lvl] : [];
+
+  all[lvl].forEach((txt, idx)=>{
+    const li = document.createElement('li');
+    li.className = 'degree-item';
+
+    const span = document.createElement('span');
+    span.textContent = txt;
+    span.title = '雙擊編輯';
+
+    // 雙擊編輯
+    span.addEventListener('dblclick', ()=>{
+      if(li.querySelector('input')) return;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = txt;
+      input.style.width = '100%';
+      input.style.padding = '6px';
+      input.style.borderRadius = '6px';
+      input.style.border = '1px solid #ccc';
+      li.replaceChild(input, span);
+      input.focus();
+      input.select();
+
+      const cancel = ()=>{ if(li.contains(input)) li.replaceChild(span, input); };
+      const save = ()=>{
+        const v = input.value.trim();
+        if(!v){ alert('內容不可為空'); input.focus(); return; }
+        const cur = getPracticeTemplates() || {};
+        cur[lvl] = cur[lvl] || [];
+        cur[lvl][idx] = v;
+        savePracticeTemplates(cur);
+        loadPracticeList();
+        renderPracticeQuickButtons();
+      };
+
+      input.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){ e.preventDefault(); save(); }
+        else if(e.key === 'Escape'){ e.preventDefault(); cancel(); }
+      });
+      input.addEventListener('blur', ()=>{
+        if(input.value.trim() === txt) cancel();
+        else save();
+      });
+    });
+
+    const del = document.createElement('button');
+    del.textContent = '✕';
+    del.onclick = ()=>{
+      if(!confirm('刪除此範本？')) return;
+      const cur = getPracticeTemplates() || {};
+      cur[lvl] = cur[lvl] || [];
+      cur[lvl].splice(idx,1);
+      savePracticeTemplates(cur);
+      loadPracticeList();
+      renderPracticeQuickButtons();
+    };
+
+    li.appendChild(span);
+    li.appendChild(del);
+    listEl.appendChild(li);
+  });
+
+  // 排序支援
+  try{
+    Sortable.create(listEl, {
+      animation:150,
+      onEnd:function(){
+        const newOrder = Array.from(listEl.querySelectorAll('li span')).map(s=>s.textContent);
+        const cur = getPracticeTemplates() || {};
+        cur[lvl] = newOrder;
+        savePracticeTemplates(cur);
+        renderPracticeQuickButtons();
+      }
+    });
+  }catch(e){}
+}
+
+// ---------- add practice template ----------
+$('addPracticeBtn').onclick = ()=>{
+  const txt = ($('newPractice') && $('newPractice').value || '').trim();
+  if(!txt) return alert('請輸入範本');
+  const lvl = ($('editPracticeLevel') && $('editPracticeLevel').value) || '1';
+  const cur = getPracticeTemplates() || {};
+  cur[lvl] = cur[lvl] || [];
+  cur[lvl].push(txt);
+  savePracticeTemplates(cur);
+  if($('newPractice')) $('newPractice').value = '';
+  loadPracticeList();
+  renderPracticeQuickButtons();
+};
+
+const exportPracticeBtn = $('exportPracticeBtn');
+if(exportPracticeBtn){
+  exportPracticeBtn.onclick = ()=>{
+    const data = getPracticeTemplates() || {};
+    const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'practiceTemplates.json'; a.click();
+  };
+}
+const importPracticeBtn = $('importPracticeBtn');
+if(importPracticeBtn){
+  importPracticeBtn.onclick = ()=>{
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'application/json';
+    input.onchange = ()=>{
+      const f = input.files[0];
+      if(!f) return;
+      const r = new FileReader();
+      r.onload = ()=>{
+        try{
+          const parsed = JSON.parse(r.result);
+          if(typeof parsed !== 'object') throw 0;
+          savePracticeTemplates(parsed);
+          loadPracticeList();
+          renderPracticeQuickButtons();
+          alert('匯入成功');
+        }catch(e){ alert('格式錯誤'); }
+      };
+      r.readAsText(f);
+    };
+    input.click();
+  };
+}
+const resetPracticeBtn = $('resetPracticeBtn');
+if(resetPracticeBtn){
+  resetPracticeBtn.onclick = ()=>{
+    if(!confirm('確定要重置為預設？此動作會刪除自訂範本')) return;
+    savePracticeTemplates(JSON.parse(JSON.stringify(defaultPracticeTemplatesByLevel)));
+    loadPracticeList();
+    renderPracticeQuickButtons();
+    alert('已重置為預設');
+  };
+}
+
+// 編輯頁等級變更需更新列表
+if($('editPracticeLevel')) $('editPracticeLevel').addEventListener('change', loadPracticeList);
+
+// ---------- 需加強（Need）：載入 / 編輯 / 快速新增 ----------
+function loadNeedList(){
+  ensureNeedTemplatesInitialized();
+  const lvlEl = $('editNeedLevel');
+  if(!lvlEl) return;
+  const lvl = lvlEl.value || '1';
+  const listEl = $('needList');
+  if(!listEl) return;
+  listEl.innerHTML = '';
+  const all = getNeedTemplates() || {};
+  all[lvl] = Array.isArray(all[lvl]) ? all[lvl] : [];
+  all[lvl].forEach((txt, idx)=>{
+    const li = document.createElement('li');
+    li.className = 'degree-item';
+    const span = document.createElement('span');
+    span.textContent = txt; span.title = '雙擊編輯';
+    span.addEventListener('dblclick', ()=>{
+      if(li.querySelector('input')) return;
+      const input = document.createElement('input'); input.type='text'; input.value = txt;
+      input.style.width='100%'; input.style.padding='6px'; input.style.borderRadius='6px'; input.style.border='1px solid #ccc';
+      li.replaceChild(input, span); input.focus(); input.select();
+      const cancel = ()=>{ if(li.contains(input)) li.replaceChild(span, input); };
+      const save = ()=>{
+        const v = input.value.trim();
+        if(!v){ alert('內容不可為空'); input.focus(); return; }
+        const cur = getNeedTemplates() || {};
+        cur[lvl] = cur[lvl] || [];
+        cur[lvl][idx] = v;
+        saveNeedTemplates(cur);
+        loadNeedList();
+        renderNeedQuickButtons();
+      };
+      input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); save(); } else if(e.key==='Escape'){ e.preventDefault(); cancel(); } });
+      input.addEventListener('blur', ()=>{ if(input.value.trim() === txt) cancel(); else save(); });
+    });
+    const del = document.createElement('button');
+    del.textContent = '✕';
+    del.onclick = ()=>{ if(!confirm('刪除此項目？')) return; const cur = getNeedTemplates() || {}; cur[lvl] = cur[lvl] || []; cur[lvl].splice(idx,1); saveNeedTemplates(cur); loadNeedList(); renderNeedQuickButtons(); };
+    li.appendChild(span); li.appendChild(del); listEl.appendChild(li);
+  });
+  try{
+    Sortable.create(listEl, {
+      animation:150,
+      onEnd:function(){
+        const newOrder = Array.from(listEl.querySelectorAll('li span')).map(s=>s.textContent);
+        const cur = getNeedTemplates() || {};
+        cur[lvl] = newOrder;
+        saveNeedTemplates(cur);
+        renderNeedQuickButtons();
+      }
+    });
+  }catch(e){}
+}
+
+// add need
+if($('addNeedBtn')) $('addNeedBtn').onclick = ()=>{
+  const txt = ($('newNeed') && $('newNeed').value || '').trim();
+  if(!txt) return alert('請輸入項目');
+  const lvl = ($('editNeedLevel') && $('editNeedLevel').value) || '1';
+  const cur = getNeedTemplates() || {};
+  cur[lvl] = cur[lvl] || [];
+  cur[lvl].push(txt);
+  saveNeedTemplates(cur);
+  if($('newNeed')) $('newNeed').value = '';
+  loadNeedList();
+  renderNeedQuickButtons();
+};
+
+// export / import / reset
+if($('exportNeedBtn')) $('exportNeedBtn').onclick = ()=>{ const data = getNeedTemplates() || {}; const blob = new Blob([JSON.stringify(data)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'needTemplates.json'; a.click(); };
+if($('importNeedBtn')) $('importNeedBtn').onclick = ()=>{
+  const input = document.createElement('input'); input.type = 'file'; input.accept = 'application/json';
+  input.onchange = ()=>{
+    const f = input.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = ()=>{
+      try{ const parsed = JSON.parse(r.result); if(typeof parsed !== 'object') throw 0; saveNeedTemplates(parsed); loadNeedList(); renderNeedQuickButtons(); alert('匯入成功'); }catch(e){ alert('格式錯誤'); }
+    };
+    r.readAsText(f);
+  };
+  input.click();
+};
+if($('resetNeedBtn')) $('resetNeedBtn').onclick = ()=>{
+  if(!confirm('確定要重置為預設？此動作會刪除自訂項目')) return;
+  saveNeedTemplates(JSON.parse(JSON.stringify(defaultNeedTemplatesByLevel)));
+  loadNeedList();
+  renderNeedQuickButtons();
+  alert('已重置為預設');
+};
+
+// render quick buttons for need (in generator)
+function renderNeedQuickButtons(){
+  ensureNeedTemplatesInitialized();
+  const templates = getNeedTemplates() || {};
+  const lvl = $('level') ? ($('level').value || '1') : '1';
+  const list = templates[lvl] || [];
+  const toggle = $('needQuickToggle');
+  const listEl = $('needQuickList');
+  if(!toggle || !listEl) return;
+  listEl.innerHTML = '';
+  if(list.length === 0){
+    const hint = document.createElement('div');
+    hint.style.color = 'var(--gray)';
+    hint.style.fontSize = '13px';
+    hint.textContent = '此等級尚無項目，可到「需加強編輯」新增';
+    listEl.appendChild(hint);
+    return;
+  }
+  list.forEach((t)=>{
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'btn ghost';
+    item.style.display = 'block';
+    item.style.width = '100%';
+    item.style.textAlign = 'left';
+    item.style.marginBottom = '6px';
+    item.style.padding = '6px 8px';
+    item.textContent = t;
+    item.title = t;
+    item.onclick = (e)=>{
+      e.stopPropagation();
+      const ta = $('needImprove');
+      if(!ta) return;
+      const needPunct = ta.value.trim().length > 0;
+      if(needPunct) ta.value = ta.value + '、' + t;
+      else ta.value = ta.value + t;
+      ta.focus();
+      try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+    };
+    listEl.appendChild(item);
+  });
+}
+
+// ---------- 補：renderPracticeQuickButtons（與 need 對稱） ----------
+function renderPracticeQuickButtons(){
+  ensurePracticeTemplatesInitialized();
+  const templates = getPracticeTemplates() || {};
+  const lvl = $('level') ? ($('level').value || '1') : '1';
+  const list = templates[lvl] || [];
+  const toggle = $('practiceQuickToggle');
+  const listEl = $('practiceQuickList');
+  if(!toggle || !listEl) return;
+  listEl.innerHTML = '';
+  if(list.length === 0){
+    const hint = document.createElement('div');
+    hint.style.color = 'var(--gray)';
+    hint.style.fontSize = '13px';
+    hint.textContent = '此等級尚無項目，可到「建議練習編輯」新增';
+    listEl.appendChild(hint);
+    return;
+  }
+  list.forEach((t)=>{
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'btn ghost';
+    item.style.display = 'block';
+    item.style.width = '100%';
+    item.style.textAlign = 'left';
+    item.style.marginBottom = '6px';
+    item.style.padding = '6px 8px';
+    item.textContent = t;
+    item.title = t;
+    item.onclick = (e)=>{
+      e.stopPropagation();
+      const ta = $('practice');
+      if(!ta) return;
+      const has = ta.value.trim().length > 0;
+      ta.value = has ? (ta.value + '、' + t) : t;
+      ta.focus();
+      try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+    };
+    listEl.appendChild(item);
+  });
+}
+
+// ---------- 補：當 編輯「加強內容」的等級改變時更新列表 ----------
+if($('editNeedLevel')) $('editNeedLevel').addEventListener('change', loadNeedList);
+
+// ---------- 補：當 generator 的等級改變時，同步更新兩組快速按鈕（分開呼叫，避免衝突） ----------
+if($('level')) {
+  $('level').addEventListener('change', ()=>{
+    try{ renderNeedQuickButtons(); }catch(e){}
+    try{ renderPracticeQuickButtons(); }catch(e){}
+    // 不自動打開任何下拉，只更新內容
+  });
+ }
+
+ // 在頁面載入後確保兩組按鈕已渲染（若已有其他 load handler，本段為補強，不衝突）
+ window.addEventListener('load', ()=>{
+  try{ renderNeedQuickButtons(); }catch(e){}
+  try{ renderPracticeQuickButtons(); }catch(e){}
+ });
+
+
+// ---------- 補：需加強編輯頁的快速新增按鈕開關處理 ----------
+function openNeedQuickList(){
+  // 互斥：開啟需加強前先關閉 practice
+  try{ closePracticeQuickList(); }catch(e){}
+  const toggle = $('needQuickToggle'), listEl = $('needQuickList');
+  if(!toggle || !listEl) return;
+  try{ renderNeedQuickButtons(); }catch(e){}
+  listEl.style.display = 'block';
+  toggle.setAttribute('aria-expanded','true');
+  setTimeout(()=>{ document.addEventListener('click', onDocClickCloseNeed); }, 0);
+}
+function closeNeedQuickList(){
+   const toggle = $('needQuickToggle'), listEl = $('needQuickList');
+   if(!toggle || !listEl) return;
+   listEl.style.display = 'none';
+   toggle.setAttribute('aria-expanded','false');
+   document.removeEventListener('click', onDocClickCloseNeed);
+ }
+ function onDocClickCloseNeed(e){
+   const wrap = document.getElementById('needQuickButtons');
+   if(!wrap) return closeNeedQuickList();
+   if(!wrap.contains(e.target)) closeNeedQuickList();
+ }
+ const needToggleEl = $('needQuickToggle');
+ if(needToggleEl){
+   needToggleEl.addEventListener('click', (e)=>{
+     e.stopPropagation();
+     const listEl = $('needQuickList');
+     if(!listEl) return;
+     if(listEl.style.display === 'block') closeNeedQuickList();
+     else openNeedQuickList();
+   });
+ }
+ 
+ // Practice 獨立處理
+ function openPracticeQuickList(){
+  // 互斥：開啟 practice 前先關閉 need
+  try{ closeNeedQuickList(); }catch(e){}
+  const toggle = $('practiceQuickToggle'), listEl = $('practiceQuickList');
+  if(!toggle || !listEl) return;
+  try{ renderPracticeQuickButtons(); }catch(e){}
+  listEl.style.display = 'block';
+  toggle.setAttribute('aria-expanded','true');
+  setTimeout(()=>{ document.addEventListener('click', onDocClickClosePractice); }, 0);
+ }
+ function closePracticeQuickList(){
+   const toggle = $('practiceQuickToggle'), listEl = $('practiceQuickList');
+   if(!toggle || !listEl) return;
+   listEl.style.display = 'none';
+   toggle.setAttribute('aria-expanded','false');
+   document.removeEventListener('click', onDocClickClosePractice);
+ }
+ function onDocClickClosePractice(e){
+   const wrap = document.getElementById('practiceQuickButtons');
+   if(!wrap) return closePracticeQuickList();
+   if(!wrap.contains(e.target)) closePracticeQuickList();
+ }
+ const practiceToggleEl = $('practiceQuickToggle');
+ if(practiceToggleEl){
+   practiceToggleEl.addEventListener('click', (e)=>{
+     e.stopPropagation();
+     const listEl = $('practiceQuickList');
+     if(!listEl) return;
+     if(listEl.style.display === 'block') closePracticeQuickList();
+     else openPracticeQuickList();
+   });
+ }
+ 
+ // 保險：按等級變更時確保列表與按鈕狀態同步（不會影響其他邏輯）
+ if($('level')){
+  $('level').addEventListener('change', ()=>{
+    try{ renderNeedQuickButtons(); }catch(e){}
+    try{ renderPracticeQuickButtons(); }catch(e){}
+    // 不自動打開任何下拉，只更新內容
+  });
+ }
+
+ // 在頁面載入後確保兩組按鈕已渲染（若已有其他 load handler，本段為補強，不衝突）
+ window.addEventListener('load', ()=>{
+  try{ renderNeedQuickButtons(); }catch(e){}
+  try{ renderPracticeQuickButtons(); }catch(e){}
+ });
+
+
+// ---------- 補：讓編輯頁的新增輸入欄位按 Enter 即可新增 ----------
+(function(){
+  function bindEnterToAdd(inputId, btnId){
+    const bind = ()=>{
+      const inp = document.getElementById(inputId);
+      const btn = document.getElementById(btnId);
+      if(!inp) return;
+      inp.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){
+          e.preventDefault();
+          // 若有對應按鈕就觸發它的 click handler，否則直接呼叫已存在的新增邏輯
+          if(btn) btn.click();
+          else {
+            // safety: try known handlers
+            if(inputId === 'newDegree' && typeof window.addDegree === 'function') window.addDegree();
+            if(inputId === 'newPractice' && typeof window.addPractice === 'function') window.addPractice();
+            if(inputId === 'newNeed' && typeof window.addNeed === 'function') window.addNeed();
+          }
+        }
+      });
+    };
+    // 若 DOM 尚未 ready，就等待 load 再綁定（此檔 script 放於 body 底部通常可以直接綁定）
+    if(document.readyState === 'complete' || document.readyState === 'interactive'){
+      bind();
+    } else {
+      window.addEventListener('load', bind);
+    }
+  }
+
+  bindEnterToAdd('newDegree','addDegreeBtn');
+  bindEnterToAdd('newPractice','addPracticeBtn');
+  bindEnterToAdd('newNeed','addNeedBtn');
+})();
+
+// ---------- 補：清空/恢復按鈕行為（bind 到 #toggleResetRestoreBtn） ----------
+(function bindToggleResetRestore(){
+  const btn = $('toggleResetRestoreBtn');
+  if(!btn) return;
+
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    // 如果尚未清空 -> 儲存狀態並清空
+    if(!isCleared){
+      // 儲存表單狀態
+      savedInputState = {
+        level: $('level') ? $('level').value : '',
+        rating: $('rating') ? $('rating').value : '',
+        levelState: $('levelState') ? $('levelState').value : '',
+        type: $('type') ? $('type').value : '',
+        character: $('character') ? $('character').value : '',
+        degree: $('degreeSelect') ? $('degreeSelect').value : '',
+        needImprove: $('needImprove') ? $('needImprove').value : '',
+        practice: $('practice') ? $('practice').value : '',
+        otherNotes: $('otherNotes') ? $('otherNotes').value : '',
+        reverseFoot: $('reverseFoot') ? !!$('reverseFoot').checked : false
+      };
+      // 必要技能狀態
+      savedInputState.remarks = Array.from(document.querySelectorAll('#requiredSkills .remark'))
+        .filter(r=>r.tagName==='INPUT')
+        .map(r=>({ value: r.value, state: r.dataset.state || (r.checked ? 'yes' : 'no') }));
+      // 核心技能狀態
+      const coreCols = document.querySelectorAll('#skillBlockCore .skill-col');
+      savedInputState.core = Array.from(coreCols).map(col=>{
+        const a = col.querySelector('button.active'); return a ? a.textContent : '';
+      });
+
+      try{ sessionStorage.setItem('savedInputState_v1', JSON.stringify(savedInputState)); }catch(e){}
+
+      // 清空 UI（保守處理）
+      if($('level')) $('level').value = '';
+      if($('rating')) $('rating').value = '未評級';
+      if($('levelState')) $('levelState').value = '';
+      if($('type')) $('type').value = '';
+      if($('character')) $('character').value = '';
+      loadDegreeOptions(); // 會根據 level 更新 degreeSelect
+      if($('needImprove')) $('needImprove').value = '';
+      if($('practice')) $('practice').value = '';
+      if($('otherNotes')) $('otherNotes').value = '';
+      if($('reverseFoot')) $('reverseFoot').checked = false;
+      // 清除必要技能
+      document.querySelectorAll('#requiredSkills .remark').forEach(r=>{ if(r.tagName==='INPUT') setRemarkStateFor(r,'no'); });
+      // 清除核心技能選取（保留 UI 空白）
+      document.querySelectorAll('#skillBlockCore .skill-col button').forEach(b=>b.classList.remove('active'));
+      // 變更後立即更新預覽
+      try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+      if($('coreOutput')) $('coreOutput').textContent = '';
+
+      // 切換按鈕狀態並啟動監聽以便偵測互動後取消恢復
+      btn.textContent = '恢復輸入';
+      btn.classList.remove('clear'); btn.classList.add('restore');
+      isCleared = true;
+      startClearedMonitor();
+      return;
+    }
+
+    // 如果目前為已清空狀態 -> 嘗試恢復
+    let s = savedInputState && Object.keys(savedInputState).length ? savedInputState : null;
+    if(!s){
+      try{ s = JSON.parse(sessionStorage.getItem('savedInputState_v1') || '{}'); }catch(e){ s = {}; }
+    }
+    if(!s || Object.keys(s).length === 0){
+      alert('找不到可恢復的輸入資料');
+      return;
+    }
+
+    // 還原值
+    if('level' in s && $('level')) $('level').value = s.level || '';
+    if('rating' in s && $('rating')) $('rating').value = s.rating || '未評級';
+    if('levelState' in s && $('levelState')) $('levelState').value = s.levelState || '';
+    if('type' in s && $('type')) $('type').value = s.type || '';
+    if('character' in s && $('character')) $('character').value = s.character || '';
+    loadDegreeOptions();
+    if('degree' in s && $('degreeSelect')) $('degreeSelect').value = s.degree || '';
+    if('needImprove' in s && $('needImprove')) $('needImprove').value = s.needImprove || '';
+    if('practice' in s && $('practice')) $('practice').value = s.practice || '';
+    if('otherNotes' in s && $('otherNotes')) $('otherNotes').value = s.otherNotes || '';
+    if('reverseFoot' in s && $('reverseFoot')) $('reverseFoot').checked = !!s.reverseFoot;
+    if(Array.isArray(s.remarks)){
+      const inputs = Array.from(document.querySelectorAll('#requiredSkills .remark')).filter(r=>r.tagName==='INPUT');
+      inputs.forEach((r,i)=>{ const st = (s.remarks[i] && s.remarks[i].state) ? s.remarks[i].state : 'no'; setRemarkStateFor(r, st); });
+    }
+    if(Array.isArray(s.core) && s.core.length){
+      applyCoreStateArray(s.core);
+    }
+
+    // 重新產生預覽，讓 UI 與評語同步
+    try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+    if($('coreOutput')) $('coreOutput').textContent = (s.core || []).filter(Boolean).join(' ');
+
+    // 重設按鈕狀態並停止監聽
+    btn.textContent = '清空輸入';
+    btn.classList.remove('restore'); btn.classList.add('clear');
+    isCleared = false;
+    stopClearedMonitor();
+    savedInputState = {};
+    try{ sessionStorage.removeItem('savedInputState_v1'); }catch(e){}
+  });
+})();
+</script>
+</body>
+</html>
