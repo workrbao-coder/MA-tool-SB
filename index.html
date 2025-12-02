@@ -1518,9 +1518,9 @@ function generatePreview(){
 // 綁定原本按鈕行為（按鈕仍存在但會隱藏）
 if($('genBtn')) $('genBtn').onclick = generatePreview;
 
-// 隱藏「產生評語」與「清空輸入」按鈕（保留 copy 按鈕）
+// 隱藏產生按鈕，但顯示「清空輸入」按鈕以恢復功能
 if($('genBtn')) $('genBtn').style.display = 'none';
-if($('toggleResetRestoreBtn')) $('toggleResetRestoreBtn').style.display = 'none';
+if($('toggleResetRestoreBtn')) $('toggleResetRestoreBtn').style.display = '';
 
 // 全域自動觸發：監聽 change/input 以即時更新產生結果
 document.addEventListener('change', (e)=>{
