@@ -438,7 +438,7 @@ textarea{min-height:50px;resize:vertical;}
           <button class="btn primary" id="genBtn">產生評語</button>
 
           <!-- 單一整合按鈕：清空/恢復 -->
-          <button class="btn ghost clear" id="toggleResetRestoreBtn">清空輸入</button>
+          <button class="btn ghost clear" id="toggleResetRestoreBtn">清空全部</button>
 
           <div style="position:relative;">
             <button class="btn primary" id="copyBtn">複製</button>
@@ -1518,7 +1518,7 @@ function generatePreview(){
 // 綁定原本按鈕行為（按鈕仍存在但會隱藏）
 if($('genBtn')) $('genBtn').onclick = generatePreview;
 
-// 隱藏產生按鈕，但顯示「清空輸入」按鈕以恢復功能
+// 隱藏產生按鈕，但顯示「清空全部」按鈕以恢復功能
 if($('genBtn')) $('genBtn').style.display = 'none';
 if($('toggleResetRestoreBtn')) $('toggleResetRestoreBtn').style.display = '';
 
@@ -1548,7 +1548,7 @@ function startClearedMonitor(){
     if(!isCleared) return;
     const btn = $('toggleResetRestoreBtn');
     if(btn){
-      btn.textContent = '清空輸入';
+      btn.textContent = '清空全部';
       btn.classList.remove('restore'); btn.classList.add('clear');
     }
     // 清除暫存狀態
@@ -2250,7 +2250,7 @@ function closeNeedQuickList(){
     if($('coreOutput')) $('coreOutput').textContent = (s.core || []).filter(Boolean).join(' ');
 
     // 重設按鈕狀態並停止監聽
-    btn.textContent = '清空輸入';
+    btn.textContent = '清空全部';
     btn.classList.remove('restore'); btn.classList.add('clear');
     isCleared = false;
     stopClearedMonitor();
