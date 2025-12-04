@@ -455,6 +455,7 @@ textarea{min-height:50px;resize:vertical;}
           <button class="btn primary" id="genBtn">產生評語</button>
 
           <!-- 單一整合按鈕：清空/恢復 -->
+          <button class="btn ghost clear" id="toggleResetInputsBtn">清空輸入</button>
           <button class="btn ghost clear" id="toggleResetRestoreBtn">清空全部</button>
 
           <div style="position:relative;">
@@ -1538,6 +1539,7 @@ if($('genBtn')) $('genBtn').onclick = generatePreview;
 // 隱藏產生按鈕，但顯示「清空全部」按鈕以恢復功能
 if($('genBtn')) $('genBtn').style.display = 'none';
 if($('toggleResetRestoreBtn')) $('toggleResetRestoreBtn').style.display = '';
+if($('toggleResetInputsBtn')) $('toggleResetInputsBtn').style.display = '';
 
 // 全域自動觸發：監聽 change/input 以即時更新產生結果
 document.addEventListener('change', (e)=>{
@@ -1552,6 +1554,46 @@ document.addEventListener('input', (e)=>{ const t = e && e.target; if(!t) return
 // ---------- 清空/恢復（合併按鈕） ----------
 let isCleared = false;
 let _clearedMonitorActive = false;
+// --- 新增：輸入專用清空/恢復狀態與監聽器 ---
+let isInputsCleared = false;
+let savedInputsState = {};
+let _inputsMonitorActive = false;
+let _inputsMonitorHandlerInput = null;
+
+function startInputsClearedMonitor(){
+  if(_inputsMonitorActive) return;
+
+  const cancelInputsRestore = ()=>{
+    if(!isInputsCleared) return;
+    const ibtn = $('toggleResetInputsBtn');
+    if(ibtn){
+      ibtn.textContent = '清空輸入';
+      ibtn.classList.remove('restore'); ibtn.classList.add('clear');
+    }
+    savedInputsState = {};
+    try{ sessionStorage.removeItem('savedInputsState_v1'); }catch(e){}
+    isInputsCleared = false;
+    stopInputsClearedMonitor();
+  };
+
+  // 只要使用者在三個文字欄位輸入，就取消輸入恢復
+  _inputsMonitorHandlerInput = (e)=>{
+    const t = e && e.target; if(!t) return;
+    const targetIds = ['needImprove','practice','otherNotes'];
+    if((t.tagName === 'TEXTAREA' || t.tagName === 'INPUT') && targetIds.includes(t.id)){
+      cancelInputsRestore();
+    }
+  };
+  document.addEventListener('input', _inputsMonitorHandlerInput, true);
+
+  _inputsMonitorActive = true;
+}
+
+function stopInputsClearedMonitor(){
+  if(!_inputsMonitorActive) return;
+  if(_inputsMonitorHandlerInput){ document.removeEventListener('input', _inputsMonitorHandlerInput, true); _inputsMonitorHandlerInput = null; }
+  _inputsMonitorActive = false;
+}
 // 移除舊單一 handler，改為三個專屬 handler
 let _clearedMonitorHandlerSelect = null;
 let _clearedMonitorHandlerInput = null;
@@ -2180,6 +2222,17 @@ function closeNeedQuickList(){
     e.preventDefault();
     // 如果尚未清空 -> 儲存狀態並清空
     if(!isCleared){
+      // 如果目前有輸入專用的清空狀態，先把輸入的暫存值取出，並取消該輸入恢復按鈕狀態
+      if(isInputsCleared && savedInputsState && Object.keys(savedInputsState).length){
+        // 把輸入暫存合併到 full saved state（稍後會使用）
+        // 先把輸入恢復按鈕回復成「清空輸入」狀態
+        const ibtn = $('toggleResetInputsBtn');
+        if(ibtn){ ibtn.textContent = '清空輸入'; ibtn.classList.remove('restore'); ibtn.classList.add('clear'); }
+        try{ sessionStorage.removeItem('savedInputsState_v1'); }catch(e){}
+        isInputsCleared = false;
+        savedInputsState = {};
+        stopInputsClearedMonitor();
+      }
       // 儲存表單狀態
       savedInputState = {
         level: $('level') ? $('level').value : '',
@@ -2188,10 +2241,11 @@ function closeNeedQuickList(){
         type: $('type') ? $('type').value : '',
         character: $('character') ? $('character').value : '',
         degree: $('degreeSelect') ? $('degreeSelect').value : '',
-        needImprove: $('needImprove') ? $('needImprove').value : '',
-        practice: $('practice') ? $('practice').value : '',
-        otherNotes: $('otherNotes') ? $('otherNotes').value : '',
-        reverseFoot: $('reverseFoot') ? !!$('reverseFoot').checked : false
+        // 如果之前是輸入清空且有暫存，優先使用暫存值（可保留使用者在清空輸入前的內容）
+        needImprove: (savedInputsState && savedInputsState.needImprove) ? savedInputsState.needImprove : ($('needImprove') ? $('needImprove').value : ''),
+        practice: (savedInputsState && savedInputsState.practice) ? savedInputsState.practice : ($('practice') ? $('practice').value : ''),
+        otherNotes: (savedInputsState && savedInputsState.otherNotes) ? savedInputsState.otherNotes : ($('otherNotes') ? $('otherNotes').value : ''),
+        reverseFoot: (savedInputsState && typeof savedInputsState.reverseFoot !== 'undefined') ? !!savedInputsState.reverseFoot : ($('reverseFoot') ? !!$('reverseFoot').checked : false)
       };
       // 必要技能狀態
       savedInputState.remarks = Array.from(document.querySelectorAll('#requiredSkills .remark'))
@@ -2225,7 +2279,7 @@ function closeNeedQuickList(){
       if($('coreOutput')) $('coreOutput').textContent = '';
 
       // 切換按鈕狀態並啟動監聽以便偵測互動後取消恢復
-      btn.textContent = '恢復輸入';
+      btn.textContent = '恢復全部';
       btn.classList.remove('clear'); btn.classList.add('restore');
       isCleared = true;
       startClearedMonitor();
@@ -2273,6 +2327,68 @@ function closeNeedQuickList(){
     stopClearedMonitor();
     savedInputState = {};
     try{ sessionStorage.removeItem('savedInputState_v1'); }catch(e){}
+  });
+})();
+
+// ---------- 新增：輸入專用清空/恢復按鈕行為（bind 到 #toggleResetInputsBtn） ----------
+(function bindToggleResetInputs(){
+  const ibtn = $('toggleResetInputsBtn');
+  if(!ibtn) return;
+
+  ibtn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    // 若尚未清空輸入 -> 儲存輸入欄位狀態並清空
+    if(!isInputsCleared){
+      savedInputsState = {
+        needImprove: $('needImprove') ? $('needImprove').value : '',
+        practice: $('practice') ? $('practice').value : '',
+        otherNotes: $('otherNotes') ? $('otherNotes').value : '',
+        reverseFoot: $('reverseFoot') ? !!$('reverseFoot').checked : false
+      };
+      try{ sessionStorage.setItem('savedInputsState_v1', JSON.stringify(savedInputsState)); }catch(e){}
+
+      // 清空輸入欄位
+      if($('needImprove')) $('needImprove').value = '';
+      if($('practice')) $('practice').value = '';
+      if($('otherNotes')) $('otherNotes').value = '';
+      if($('reverseFoot')) $('reverseFoot').checked = false;
+      try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+
+      // 切換按鈕狀態
+      ibtn.textContent = '恢復輸入'; ibtn.classList.remove('clear'); ibtn.classList.add('restore');
+      isInputsCleared = true;
+      startInputsClearedMonitor();
+
+      // 如果同時全域是清空/恢復狀態，取消全域的恢復（互斥）
+      const fullBtn = $('toggleResetRestoreBtn');
+      if(fullBtn && isCleared){
+        fullBtn.textContent = '清空全部'; fullBtn.classList.remove('restore'); fullBtn.classList.add('clear');
+        isCleared = false;
+        savedInputState = {};
+        try{ sessionStorage.removeItem('savedInputState_v1'); }catch(e){}
+        stopClearedMonitor();
+      }
+      return;
+    }
+
+    // 若目前為已清空輸入狀態 -> 嘗試恢復輸入欄位
+    let s = savedInputsState && Object.keys(savedInputsState).length ? savedInputsState : null;
+    if(!s){
+      try{ s = JSON.parse(sessionStorage.getItem('savedInputsState_v1') || '{}'); }catch(e){ s = {}; }
+    }
+    if(!s || Object.keys(s).length === 0){ alert('找不到可恢復的輸入資料'); return; }
+
+    if('needImprove' in s && $('needImprove')) $('needImprove').value = s.needImprove || '';
+    if('practice' in s && $('practice')) $('practice').value = s.practice || '';
+    if('otherNotes' in s && $('otherNotes')) $('otherNotes').value = s.otherNotes || '';
+    if('reverseFoot' in s && $('reverseFoot')) $('reverseFoot').checked = !!s.reverseFoot;
+    try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+
+    ibtn.textContent = '清空輸入'; ibtn.classList.remove('restore'); ibtn.classList.add('clear');
+    isInputsCleared = false;
+    stopInputsClearedMonitor();
+    savedInputsState = {};
+    try{ sessionStorage.removeItem('savedInputsState_v1'); }catch(e){}
   });
 })();
 </script>
