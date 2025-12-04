@@ -10,6 +10,23 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+
+<script>
+  // APP version - 修改這裡即可一次更新整個專案顯示
+  const APP_VERSION = 'v2.7.1';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const vEl = document.querySelector('.version');
+    if (vEl) vEl.textContent = APP_VERSION + '　　';
+    // 同步到 title（若尚未包含版本）
+    if (document.title && !document.title.includes(APP_VERSION)) {
+      document.title = `${document.title} ${APP_VERSION}`;
+    }
+  });
+</script>
+
+
 <link rel="icon" type="image/png" href="MA-icon.png" />
 <title>MA評語產生器</title>
 <style>
