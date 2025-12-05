@@ -1285,6 +1285,23 @@ function setRemarkStateFor(el, state){
   if(activeRemark === el) updateRemarkControlUI();
   // 變更必要技能狀態時立即更新評語預覽
   try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+  // Update visual symbol (if label contains .remark-symbol)
+  try{
+    const lab = el.closest('label');
+    if(lab){
+      const sym = lab.querySelector('.remark-symbol');
+      if(sym){
+        const col = (el.closest && el.closest('td')) ? Array.from(el.closest('td').parentElement.children).indexOf(el.closest('td')) : 0;
+        const mapPerCol = [
+          { no:'X', yes:'O', half:'？' }, // col 0 = 一級
+          { no:'X', yes:'O', half:'▲' }, // col 1 = 三級
+          { no:'X', yes:'O', half:'' }   // col 2 = 四級 (no half)
+        ];
+        const m = mapPerCol[col] || mapPerCol[0];
+        sym.textContent = m[el.dataset.state || 'no'] || '';
+      }
+    }
+  }catch(e){}
 }
 
 function initTriStateRemarks(){
@@ -1294,74 +1311,114 @@ function initTriStateRemarks(){
     r.tabIndex = 0;
     if(!r.dataset.state) r.dataset.state = r.checked ? 'yes' : 'no';
 
-    const applyState = (s)=>{
+    // create or ensure a symbol element inside the label, before the label text
+    const parentLabel = r.closest('label') || r.parentElement;
+    if(parentLabel){
+      // hide native checkbox visually but keep it accessible
+      r.style.position = 'absolute';
+      r.style.left = '-9999px';
+      r.style.width = '1px';
+      r.style.height = '1px';
+      r.style.opacity = '0';
+
+      // ensure .remark-symbol exists
+      let sym = parentLabel.querySelector('.remark-symbol');
+      if(!sym){
+        sym = document.createElement('span');
+        sym.className = 'remark-symbol';
+        sym.style.display = 'inline-block';
+        sym.style.minWidth = '20px';
+        sym.style.textAlign = 'center';
+        sym.style.marginRight = '6px';
+        sym.style.fontWeight = '700';
+        sym.style.color = '#333';
+        parentLabel.insertBefore(sym, parentLabel.firstChild);
+      }
+
+      // determine column index (td child index) to choose symbol mapping
+      const td = r.closest('td');
+      const colIndex = td ? Array.from(td.parentElement.children).indexOf(td) : 0;
+
+      // symbol mapping per column
+      const mapPerCol = [
+        { no:'X', yes:'O', half:'？' }, // 第一欄（「一級」）
+        { no:'X', yes:'O', half:'▲' }, // 第二欄（「三級」）
+        { no:'X', yes:'O', half:'' }   // 第三欄（「四級」，無 half）
+      ];
+      const map = mapPerCol[colIndex] || mapPerCol[0];
+
+      // apply visual based on current dataset.state
+      const applyVisual = (state)=>{
+        sym.textContent = map[state] || map['no'] || '';
+        // small visual cue for half (if exists)
+        if(state === 'half') sym.style.color = '#d18b00';
+        else if(state === 'yes') sym.style.color = '#2b8e54';
+        else sym.style.color = '#c0392b';
+      };
+
+      // apply initial visual
+      applyVisual(r.dataset.state || (r.checked ? 'yes' : 'no'));
+
+      // store per-element cycle behavior
+      r._remark_cycle = map; // keep mapping for other handlers
+      r._remark_colIndex = colIndex;
+      r._remark_applyVisual = applyVisual;
+    }
+
+    const updateApplyState = (s)=>{
+      // synchronize dataset/state/checked/indeterminate and visual
       if(isTri){
-        if(s === 'yes'){ r.checked = true; r.indeterminate = false; }
-        else if(s === 'half'){ r.checked = false; r.indeterminate = true; }
-        else { r.checked = false; r.indeterminate = false; }
-        r.dataset.state = s;
+        if(s === 'yes'){ r.checked = true; r.indeterminate = false; r.dataset.state = 'yes'; }
+        else if(s === 'half'){ r.checked = false; r.indeterminate = true; r.dataset.state = 'half'; }
+        else { r.checked = false; r.indeterminate = false; r.dataset.state = 'no'; }
       } else {
         if(s === 'yes'){ r.checked = true; r.indeterminate = false; r.dataset.state = 'yes'; }
         else { r.checked = false; r.indeterminate = false; r.dataset.state = 'no'; }
       }
-      if(activeRemark === r) updateRemarkControlUI();
-      // tri-state 或勾選狀態改變也觸發自動產生
+      // update symbol visual if present
+      try{ if(typeof r._remark_applyVisual === 'function') r._remark_applyVisual(r.dataset.state || (r.checked ? 'yes' : 'no')); }catch(e){}
+      // trigger preview update if existing
       try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
     };
 
-    applyState(r.dataset.state);
+    // default apply current dataset state visually
+    updateApplyState(r.dataset.state || (r.checked ? 'yes' : 'no'));
 
-    const parentLabel = r.closest('label') || r.parentElement;
-    if(parentLabel){
-      parentLabel.addEventListener('click', (e)=>{
-        if(isTri){
-          e.preventDefault();
-          activeRemark = r;
-          updateRemarkControlUI();
-        } else {
-          activeRemark = r;
-          setTimeout(()=>{ r.dataset.state = r.checked ? 'yes' : 'no'; if(activeRemark===r) updateRemarkControlUI(); }, 0);
-        }
-      });
-    }
+    // determine cycle for this element based on column and tri-state support
+    let cycle;
+    try{
+      const col = r._remark_colIndex || 0;
+      if(col === 0){ cycle = ['no','yes','half']; } // 一級: X -> O -> ？
+      else if(col === 1){ cycle = ['no','yes','half']; } // 三級: X -> O -> ▲
+      else { cycle = ['no','yes']; } // 四級: X <-> O
+    }catch(e){ cycle = isTri ? ['no','yes','half'] : ['no','yes']; }
 
-    r.addEventListener('focus', ()=>{ activeRemark = r; updateRemarkControlUI(); });
+    // bind click to cycle states
+    parentLabel && parentLabel.addEventListener && parentLabel.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const cur = r.dataset.state || (r.checked ? 'yes' : 'no');
+      const idx = cycle.indexOf(cur);
+      const next = cycle[(idx + 1) % cycle.length];
+      updateApplyState(next);
+    });
 
-    if(isTri){
-      // 針對「下桿開機」強制使用 no -> yes -> half 的循環順序，其他三態維持預設順序
-      const defaultCycle = ['no','yes','half']; // 預設循環（不改變其他項目）
-      const cycle = (r.value === '下桿開機') ? ['no','yes','half'] : defaultCycle;
-
-      r.addEventListener('mousedown', (e)=>{
+    // make keyboard accessible: space/enter also cycle
+    r.addEventListener('keydown', (e)=>{
+      if(e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter'){
         e.preventDefault();
-        activeRemark = r;
         const cur = r.dataset.state || (r.checked ? 'yes' : 'no');
         const idx = cycle.indexOf(cur);
         const next = cycle[(idx + 1) % cycle.length];
-        applyState(next);
-        updateRemarkControlUI();
-      });
-      r.addEventListener('keydown', (e)=>{
-        if(e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter'){
-          e.preventDefault();
-          activeRemark = r;
-          const cur = r.dataset.state || (r.checked ? 'yes' : 'no');
-          const idx = cycle.indexOf(cur);
-          const next = cycle[(idx + 1) % cycle.length];
-          applyState(next);
-          updateRemarkControlUI();
-        }
-      });
-    } else {
-      r.addEventListener('change', ()=>{
-        r.dataset.state = r.checked ? 'yes' : 'no';
-        if(activeRemark === r) updateRemarkControlUI();
-        // 勾選變動後立即更新預覽，避免與其他同步行為發生 race condition
-        try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
-      });
-    }
+        updateApplyState(next);
+      }
+    });
+
+    // keep focus behavior (for control panel)
+    r.addEventListener('focus', ()=>{ activeRemark = r; updateRemarkControlUI(); });
+
   });
 
+  // setup small control buttons if exist (保持原邏輯)
   const setupControls = ()=>{
     const btnU = document.getElementById('setUnchecked');
     const btnC = document.getElementById('setChecked');
@@ -1686,10 +1743,12 @@ $('copyBtn').onclick = ()=>{ const text = $('preview').textContent || ''; naviga
     const row2 = document.createElement('div'); row2.className = 'skill-row';
     // create buttons: first two in row1, rest in row2
     levels.forEach((lv, idx)=>{
+
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.textContent = lv;
       btn.onclick = ()=>{
+
         col.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
         btn.classList.add('active');
         // 變更時也立即儲存到 localStorage
@@ -1799,27 +1858,13 @@ function loadPracticeList(){
         renderPracticeQuickButtons();
       };
 
-      input.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter'){ e.preventDefault(); save(); }
-        else if(e.key === 'Escape'){ e.preventDefault(); cancel(); }
-      });
-      input.addEventListener('blur', ()=>{
-        if(input.value.trim() === txt) cancel();
-        else save();
-      });
+      input.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); save(); } else if(e.key === 'Escape'){ e.preventDefault(); cancel(); } });
+      input.addEventListener('blur', ()=>{ if(input.value.trim() === txt) cancel(); else save(); });
     });
 
     const del = document.createElement('button');
     del.textContent = '✕';
-    del.onclick = ()=>{
-      if(!confirm('刪除此範本？')) return;
-      const cur = getPracticeTemplates() || {};
-      cur[lvl] = cur[lvl] || [];
-      cur[lvl].splice(idx,1);
-      savePracticeTemplates(cur);
-      loadPracticeList();
-      renderPracticeQuickButtons();
-    };
+    del.onclick = ()=>{ if(!confirm('刪除此範本？')) return; const cur = getPracticeTemplates() || {}; cur[lvl] = cur[lvl] || []; cur[lvl].splice(idx,1); savePracticeTemplates(cur); loadPracticeList(); renderPracticeQuickButtons(); };
 
     li.appendChild(span);
     li.appendChild(del);
@@ -2093,7 +2138,7 @@ if($('level')) {
   try{ renderNeedQuickButtons(); }catch(e){}
   try{ renderPracticeQuickButtons(); }catch(e){}
  });
-
+ 
 
 // ---------- 補：需加強編輯頁的快速新增按鈕開關處理 ----------
 function openNeedQuickList(){
@@ -2177,7 +2222,7 @@ function closeNeedQuickList(){
   try{ renderNeedQuickButtons(); }catch(e){}
   try{ renderPracticeQuickButtons(); }catch(e){}
  });
-
+ 
 
 // ---------- 補：讓編輯頁的新增輸入欄位按 Enter 即可新增 ----------
 (function(){
@@ -2213,6 +2258,7 @@ function closeNeedQuickList(){
   bindEnterToAdd('newNeed','addNeedBtn');
 })();
 
+
 // ---------- 補：清空/恢復按鈕行為（bind 到 #toggleResetRestoreBtn） ----------
 (function bindToggleResetRestore(){
   const btn = $('toggleResetRestoreBtn');
@@ -2224,8 +2270,7 @@ function closeNeedQuickList(){
     if(!isCleared){
       // 如果目前有輸入專用的清空狀態，先把輸入的暫存值取出，並取消該輸入恢復按鈕狀態
       if(isInputsCleared && savedInputsState && Object.keys(savedInputsState).length){
-        // 把輸入暫存合併到 full saved state（稍後會使用）
-        // 先把輸入恢復按鈕回復成「清空輸入」狀態
+        // 把輸入恢復按鈕回復成「清空輸入」狀態
         const ibtn = $('toggleResetInputsBtn');
         if(ibtn){ ibtn.textContent = '清空輸入'; ibtn.classList.remove('restore'); ibtn.classList.add('clear'); }
         try{ sessionStorage.removeItem('savedInputsState_v1'); }catch(e){}
@@ -2329,6 +2374,7 @@ function closeNeedQuickList(){
     try{ sessionStorage.removeItem('savedInputState_v1'); }catch(e){}
   });
 })();
+
 
 // ---------- 新增：輸入專用清空/恢復按鈕行為（bind 到 #toggleResetInputsBtn） ----------
 (function bindToggleResetInputs(){
