@@ -142,8 +142,9 @@ textarea{min-height:50px;resize:vertical;}
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:20px;       /* 固定寬度：以最大符號為主 */
-  height:20px;      /* 固定高度 */
+  vertical-align:middle;
+  width:22px;       /* 固定寬度：以最大符號為主 */
+  height:22px;      /* 固定高度 */
   padding:0;        /* 移除內距以確保固定尺寸 */
   box-sizing:border-box;
   text-align:center;
@@ -478,17 +479,20 @@ textarea{min-height:50px;resize:vertical;}
         <h3>MA預覽</h3>
         <div id="preview" class="preview">尚未產生評語。</div>
         <div style="display:flex;gap:8px;margin-top:10px;align-items:center;position:relative;">
-          <button class="btn primary" id="genBtn">產生評語</button>
 
-          <!-- 單一整合按鈕：清空/恢復 -->
-          <button class="btn ghost clear" id="toggleResetInputsBtn">清空輸入</button>
-          <button class="btn ghost clear" id="toggleResetRestoreBtn">清空全部</button>
+        <!-- 重新排序按鈕：複製、清空輸入、清空全部（產生按鈕保留但隱藏） -->
+        <div style="position:relative;">
+         <button class="btn primary" id="copyBtn">複製</button>
+         <span id="copyCheck" class="copy-check"> </span>
+       </div>
 
-          <div style="position:relative;">
-            <button class="btn primary" id="copyBtn">複製</button>
-            <span id="copyCheck" class="copy-check"> </span>
-          </div>
-        </div>
+       <button class="btn ghost clear" id="toggleResetInputsBtn">清空輸入</button>
+       <button class="btn ghost clear" id="toggleResetRestoreBtn">清空全部</button>
+
+       <!-- 保留產生按鈕（預設由 script 隱藏） -->
+       <button class="btn primary" id="genBtn" style="display:none;">產生評語</button>
+
+      </div>
       </div>
     </div>
   </div>
