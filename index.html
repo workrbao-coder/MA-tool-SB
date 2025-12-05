@@ -143,21 +143,21 @@ textarea{min-height:50px;resize:vertical;}
   align-items:center;
   justify-content:center;
   vertical-align:middle;
-  width:22px;       /* 固定寬度：以最大符號為主 */
-  height:22px;      /* 固定高度 */
-  padding:0;        /* 移除內距以確保固定尺寸 */
+  width:34px;        /* 固定寬度（依最大符號調整） */
+  height:28px;       /* 固定高度 */
+  padding:0;         /* 移除內距以確保固定尺寸 */
   box-sizing:border-box;
-  text-align:center;
   margin-right:6px;
   font-weight:700;
   font-size:14px;
-  line-height:1;
+  line-height:28px;  /* 與高度相同以確保文字垂直置中 */
   color:#333;
   background:#fff;
   border:1px solid #e6e6e6;
   border-radius:6px;
   box-shadow:0 1px 2px rgba(0,0,0,0.04);
   transition:background .12s, border-color .12s, color .12s, transform .08s;
+  transform: translateY(0); /* reset any偏移 */
 }
 /* 若要依狀態微調顏色，可由 JS 加 class（示範用，非必要） */
 .remark-symbol.yes{ background:var(--brand-blue); color:#fff; border-color:var(--brand-blue); }
