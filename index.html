@@ -1494,7 +1494,7 @@ function generatePreview(){
       const raw = r.value.trim();
       const short = remarkMap[raw] || raw;
       const st = r.dataset.state || (r.checked ? 'yes' : 'no');
-      const suffix = st === 'yes' ? 'O' : (st === 'half' ? '△' : 'X');
+      const suffix = st === 'yes' ? 'O' : (st === 'half' ? '▲' : 'X');
       return `${short}${suffix}`;
     }
     return '';
@@ -2394,6 +2394,7 @@ function closeNeedQuickList(){
 </script>
 </body>
 </html>
+
 
 
 
