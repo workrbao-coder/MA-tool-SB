@@ -137,6 +137,28 @@ textarea{min-height:50px;resize:vertical;}
 .remark-cell label{display:inline-flex;align-items:center;gap:3px;margin-bottom:0;flex-wrap:wrap;}
 .remark-cell input{transform:scale(1.2);}
 
+/* 新增：remark-symbol 底框樣式（給那些符號一個底框） */
+.remark-symbol{
+  display:inline-block;
+  min-width:22px;
+  padding:2px 6px;
+  text-align:center;
+  margin-right:6px;
+  font-weight:700;
+  font-size:12px;
+  line-height:1;
+  color:#333;
+  background:#fff;
+  border:1px solid #e6e6e6;
+  border-radius:6px;
+  box-shadow:0 1px 2px rgba(0,0,0,0.04);
+  transition:background .12s, border-color .12s, color .12s, transform .08s;
+}
+/* 若要依狀態微調顏色，可由 JS 加 class（示範用，非必要） */
+.remark-symbol.yes{ background:var(--brand-blue); color:#fff; border-color:var(--brand-blue); }
+.remark-symbol.half{ background:#fff7e6; color:#d18b00; border-color:#d18b00; }
+.remark-symbol.no{ background:#fff; color:#c0392b; border-color:#e6e6e6; }
+
 /* 版本號樣式（你要求的小字灰色） */
 .version {
   font-size: 12px;
@@ -1849,7 +1871,7 @@ function loadPracticeList(){
       const cancel = ()=>{ if(li.contains(input)) li.replaceChild(span, input); };
       const save = ()=>{
         const v = input.value.trim();
-        if(!v){ alert('內容不可為空'); input.focus(); return; }
+        if(v === ''){ alert('內容不可為空'); input.focus(); return; }
         const cur = getPracticeTemplates() || {};
         cur[lvl] = cur[lvl] || [];
         cur[lvl][idx] = v;
