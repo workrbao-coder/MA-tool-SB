@@ -1328,7 +1328,15 @@ function setRemarkStateFor(el, state){
           { no:'X', yes:'O', half:'' }   // col 2 = 四級 (no half)
         ];
         const m = mapPerCol[col] || mapPerCol[0];
-        sym.textContent = m[el.dataset.state || 'no'] || '';
+        const display = m[el.dataset.state || 'no'] || '';
+        sym.textContent = display;
+        // update classes so CSS controls color
+        sym.classList.remove('yes','half','no');
+        if(el.dataset.state === 'yes') sym.classList.add('yes');
+        else if(el.dataset.state === 'half') sym.classList.add('half');
+        else sym.classList.add('no');
+        // if element has its own applyVisual function, call it to keep behavior consistent
+        try{ if(typeof el._remark_applyVisual === 'function') el._remark_applyVisual(el.dataset.state || 'no'); }catch(e){}
       }
     }
   }catch(e){}
