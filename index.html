@@ -1335,6 +1335,10 @@ function setRemarkStateFor(el, state){
         if(el.dataset.state === 'yes') sym.classList.add('yes');
         else if(el.dataset.state === 'half') sym.classList.add('half');
         else sym.classList.add('no');
+        // clear any inline style overrides to avoid stale colors
+        sym.style.color = '';
+        sym.style.backgroundColor = '';
+        sym.style.borderColor = '';
         // if element has its own applyVisual function, call it to keep behavior consistent
         try{ if(typeof el._remark_applyVisual === 'function') el._remark_applyVisual(el.dataset.state || 'no'); }catch(e){}
       }
@@ -1386,12 +1390,17 @@ function initTriStateRemarks(){
       const map = mapPerCol[colIndex] || mapPerCol[0];
 
       // apply visual based on current dataset.state
+      // Use classes (.yes/.half/.no) for color/background so CSS handles visuals
       const applyVisual = (state)=>{
         sym.textContent = map[state] || map['no'] || '';
-        // small visual cue for half (if exists)
-        if(state === 'half') sym.style.color = '#d18b00';
-        else if(state === 'yes') sym.style.color = '#2b8e54';
-        else sym.style.color = '#c0392b';
+        sym.classList.remove('yes','half','no');
+        if(state === 'yes') sym.classList.add('yes');
+        else if(state === 'half') sym.classList.add('half');
+        else sym.classList.add('no');
+        // clear any inline color/background overrides
+        sym.style.color = '';
+        sym.style.backgroundColor = '';
+        sym.style.borderColor = '';
       };
 
       // apply initial visual
