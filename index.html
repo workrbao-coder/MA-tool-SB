@@ -1619,10 +1619,12 @@ function generatePreview(){
   }).filter(Boolean);
 
   const parts = [];
+  // 將能力顯示改為包含等級數字（例如：2中）
+  const abilityDisplay = `${level}${state}`;
   if(rating && rating !== '未評級'){
-    parts.push(`${rating}，${state}`);
+    parts.push(`${rating}，${abilityDisplay}`);
   } else {
-    parts.push(state);
+    parts.push(abilityDisplay);
   }
   if(type) parts.push(type);
   if(char) parts.push(char);
