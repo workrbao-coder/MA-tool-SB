@@ -14,7 +14,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.7.5';
+  const APP_VERSION = 'v2.7.6';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -157,11 +157,11 @@ textarea{min-height:50px;resize:vertical;}
   border-radius:6px;
   box-shadow:0 1px 2px rgba(0,0,0,0.04);
   transition:background .12s, border-color .12s, color .12s, transform .08s;
-  transform: translateY(-1px); /* reset any偏移 */
+  transform: translateY(1px); /* reset any偏移 */
 }
 /* 若要依狀態微調顏色，可由 JS 加 class（示範用，非必要） */
-.remark-symbol.yes{ background:#fff; color:var(--brand-blue); }
-.remark-symbol.half{ background:#fff; color:#d18b00; }
+.remark-symbol.yes{ background:#fff; color:#08a715; }
+.remark-symbol.half{ background:#fff; color:#403e3b; }
 .remark-symbol.no{ background:#fff; color:#c0392b; }
 
 /* 版本號樣式（你要求的小字灰色） */
