@@ -150,14 +150,14 @@ textarea{min-height:50px;resize:vertical;}
   margin-right:6px;
   font-weight:700;
   font-size:14px;
-  /*line-height:28px;  /* 與高度相同以確保文字垂直置中 */
+  line-height:1;     /* 使用 flex 對齊 */
   color:#333;
   background:#fff;
   border:1px solid #e6e6e6;
   border-radius:6px;
   box-shadow:0 1px 2px rgba(0,0,0,0.04);
   transition:background .12s, border-color .12s, color .12s, transform .08s;
-  transform: translateY(-3); /* reset any偏移 */
+  transform: translateY(-1px); /* reset any偏移 */
 }
 /* 若要依狀態微調顏色，可由 JS 加 class（示範用，非必要） */
 .remark-symbol.yes{ background:var(--brand-blue); color:#fff; border-color:var(--brand-blue); }
@@ -1537,16 +1537,20 @@ window.addEventListener('load', ()=>{
 // ---------- generate remark output (遵循等級規則) ----------
 // 規則：1-4 包含必要技能；5-6 不包含必要技能；7 包含核心技能（不包含必要技能）
 function generatePreview(){
-  const level = $('level').value.trim();
-  const rating = $('rating').value.trim();
-  const state = $('levelState').value.trim();
-  const type = $('type').value.trim();
-  const char = $('character').value.trim();
-  const degree = $('degreeSelect').value.trim();
-  const need = $('needImprove').value.trim();
-  const practice = $('practice').value.trim();
+  const level = $('level') ? $('level').value.trim() : '';
+  const rating = $('rating') ? $('rating').value.trim() : '';
+  // 改為 levelStateRaw 避免與後面 let state 衝突
+  const levelStateRaw = $('levelState') ? $('levelState').value.trim() : '';
+  const type = $('type') ? $('type').value.trim() : '';
+  const char = $('character') ? $('character').value.trim() : '';
+  const degree = $('degreeSelect') ? $('degreeSelect').value.trim() : '';
+  const need = $('needImprove') ? $('needImprove').value.trim() : '';
+  const practice = $('practice') ? $('practice').value.trim() : '';
   const otherNotes = $('otherNotes') ? $('otherNotes').value.trim() : '';
   const reverseFootChecked = $('reverseFoot') ? !!$('reverseFoot').checked : false;
+
+  // sanitize ability display：若 levelState 內誤帶數字，移除前導數字以避免產生 "2中" 型式
+  let state = (levelStateRaw || '').replace(/^\d+/, '');
 
   if(!level || !state || !degree){
     // 不彈出 alert 造成打斷，自動觸發情境僅更新 preview 為提示文字
@@ -1581,7 +1585,17 @@ function generatePreview(){
       const raw = r.value.trim();
       const short = remarkMap[raw] || raw;
       const st = r.dataset.state || (r.checked ? 'yes' : 'no');
-      const suffix = st === 'yes' ? 'O' : (st === 'half' ? '▲' : 'X');
+
+      // 根據欄位決定輸出符號：第一欄用 ?、第二欄用 ▲、第三欄無 half
+      const td = r.closest && r.closest('td');
+      const col = td ? Array.from(td.parentElement.children).indexOf(td) : 0;
+      const mapPerCol = [
+        { no:'X', yes:'O', half:'？' }, // col 0 = 一級 (使用全形問號)
+        { no:'X', yes:'O', half:'▲' }, // col 1 = 三級
+        { no:'X', yes:'O', half:'' }   // col 2 = 四級 (no half)
+      ];
+      const m = mapPerCol[col] || mapPerCol[0];
+      const suffix = (st && m[st] !== undefined) ? m[st] : (m['no'] || '');
       return `${short}${suffix}`;
     }
     return '';
@@ -2239,15 +2253,6 @@ function closeNeedQuickList(){
  }
  
  // 保險：按等級變更時確保列表與按鈕狀態同步（不會影響其他邏輯）
- if($('level')){
-  $('level').addEventListener('change', ()=>{
-    try{ renderNeedQuickButtons(); }catch(e){}
-    try{ renderPracticeQuickButtons(); }catch(e){}
-    // 不自動打開任何下拉，只更新內容
-  });
- }
-
- // 在頁面載入後確保兩組按鈕已渲染（若已有其他 load handler，本段為補強，不衝突）
  window.addEventListener('load', ()=>{
   try{ renderNeedQuickButtons(); }catch(e){}
   try{ renderPracticeQuickButtons(); }catch(e){}
@@ -2406,7 +2411,7 @@ function closeNeedQuickList(){
 })();
 
 
-// ---------- 新增：輸入專用清空/恢復按鈕行為（bind 到 #toggleResetInputsBtn） ----------
+ // ---------- 新增：輸入專用清空/恢復按鈕行為（bind 到 #toggleResetInputsBtn） ----------
 (function bindToggleResetInputs(){
   const ibtn = $('toggleResetInputsBtn');
   if(!ibtn) return;
