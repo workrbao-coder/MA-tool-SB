@@ -14,7 +14,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.7.6';
+  const APP_VERSION = 'v2.7.7';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -671,6 +671,49 @@ textarea{min-height:50px;resize:vertical;}
 
 <div id="toast" class="toast">已複製</div>
 
+<!-- Firebase SDK (compat for simple integration) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+  // Firebase config (provided by user)
+  try{
+    const firebaseConfig = {
+      apiKey: "AIzaSyA5KfuklK3HLcshb8ickwFhIJWuOzprJGk",
+      authDomain: "ma-tool-data.firebaseapp.com",
+      databaseURL: "https://ma-tool-data-default-rtdb.firebaseio.com",
+      projectId: "ma-tool-data",
+      storageBucket: "ma-tool-data.firebasestorage.app",
+      messagingSenderId: "630905702996",
+      appId: "1:630905702996:web:ec9a5d8a0c948218a43bc1"
+    };
+    if(window.firebase && !window._maFirebaseInitialized){
+      firebase.initializeApp(firebaseConfig);
+      window._maFirebaseInitialized = true;
+      window.maDb = firebase.database();
+      console.log('Firebase initialized for MA-tool');
+    }
+  }catch(e){ console.warn('Firebase init failed', e); }
+
+  // helper: write and read
+  function firebaseWrite(key, obj){
+    try{
+      if(window.maDb){
+        return window.maDb.ref(key).set(obj);
+      }
+    }catch(e){ console.warn('firebaseWrite', e); }
+    return Promise.resolve();
+  }
+  function firebaseRead(key){
+    return new Promise((resolve)=>{
+      try{
+        if(window.maDb){
+          window.maDb.ref(key).once('value').then(s=> resolve(s.val()));
+        } else resolve(null);
+      }catch(e){ console.warn('firebaseRead', e); resolve(null); }
+    });
+  }
+</script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 <script>
 // ---------- 預設資料 ----------
@@ -842,6 +885,8 @@ function getPracticeTemplates(){
 }
 function savePracticeTemplates(obj){
   try { localStorage.setItem('practiceTemplates_v1', JSON.stringify(obj)); } catch(e){}
+  // push to Firebase if available
+  try{ if(window.maDb){ firebaseWrite('practiceTemplates_v1', obj).catch(()=>{}); } }catch(e){}
 }
 function ensurePracticeTemplatesInitialized(){
   let cur = getPracticeTemplates();
@@ -879,6 +924,8 @@ function getNeedTemplates(){
 }
 function saveNeedTemplates(obj){
   try { localStorage.setItem('needTemplates_v1', JSON.stringify(obj)); } catch(e){}
+  // push to Firebase if available
+  try{ if(window.maDb){ firebaseWrite('needTemplates_v1', obj).catch(()=>{}); } }catch(e){}
 }
 function ensureNeedTemplatesInitialized(){
   let cur = getNeedTemplates();
@@ -1089,7 +1136,14 @@ if(document.getElementById('degreeSelect')){
   document.getElementById('degreeSelect').addEventListener('change', ()=>{
     const lvl = $('level') ? $('level').value : '';
     const val = $('degreeSelect') ? $('degreeSelect').value : '';
-    if(lvl && val){ const ab = getAbilityFor(lvl, val); if(ab) $('levelState').value = ab; }
+    if(lvl && val){
+      const ab = getAbilityFor(lvl, val);
+      if(ab) {
+        $('levelState').value = ab;
+        // 因為程式會在 degree change 時自動設定能力，需立即更新預覽
+        try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+      }
+    }
   });
 }
 
@@ -1515,12 +1569,37 @@ window.addEventListener('load', ()=>{
     loadDegreeOptions();
     // Editor is hidden; do not call loadDegreeList() to avoid unnecessary operations
     ensurePracticeTemplatesInitialized();
-    loadPracticeList();
-    renderPracticeQuickButtons();
+    // Try to sync templates from Firebase first (if available), otherwise use localStorage defaults
+    try{
+      if(window.maDb){
+        // practice templates
+        firebaseRead('practiceTemplates_v1').then(data=>{
+          if(data && typeof data === 'object'){
+            savePracticeTemplates(data);
+          }
+          loadPracticeList(); renderPracticeQuickButtons();
+        }).catch(()=>{ loadPracticeList(); renderPracticeQuickButtons(); });
+        // listen for remote changes
+        try{ window.maDb.ref('practiceTemplates_v1').on('value', snap=>{ const v = snap.val(); if(v){ savePracticeTemplates(v); loadPracticeList(); renderPracticeQuickButtons(); } }); }catch(e){}
+
+        // need templates
+        firebaseRead('needTemplates_v1').then(data=>{
+          if(data && typeof data === 'object'){
+            saveNeedTemplates(data);
+          }
+          loadNeedList(); renderNeedQuickButtons();
+        }).catch(()=>{ loadNeedList(); renderNeedQuickButtons(); });
+        try{ window.maDb.ref('needTemplates_v1').on('value', snap=>{ const v = snap.val(); if(v){ saveNeedTemplates(v); loadNeedList(); renderNeedQuickButtons(); } }); }catch(e){}
+      } else {
+        loadPracticeList(); renderPracticeQuickButtons(); loadNeedList(); renderNeedQuickButtons();
+      }
+    }catch(e){ console.warn('firebase sync error', e); loadPracticeList(); renderPracticeQuickButtons(); loadNeedList(); renderNeedQuickButtons(); }
     initTriStateRemarks();
     toggleSkillsDisplay();
 
     // 綁定新增的按鈕（若存在）
+    // 隱藏匯出/匯入/重置按鈕（由使用者請求）
+    ['exportBtn','importBtn','resetDefaultBtn','exportPracticeBtn','importPracticeBtn','resetPracticeBtn','exportNeedBtn','importNeedBtn','resetNeedBtn'].forEach(id=>{ const el = document.getElementById(id); if(el) el.style.display = 'none'; });
     const btnAll = document.getElementById('toggleRequiredAllBtn');
     if(btnAll) btnAll.addEventListener('click', (e)=>{ e.preventDefault(); toggleAllRequired(); });
 
