@@ -385,6 +385,13 @@ textarea{min-height:50px;resize:vertical;}
         </div>
 
         <div class="form-row">
+          <div class="label">其他備註</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+            <textarea id="otherNotes" placeholder="其他備註..." style="min-height:50px;"></textarea>
+          </div>
+        </div>
+
+        <div class="form-row">
           <div class="label">需加強</div>
           <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
             <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -411,13 +418,6 @@ textarea{min-height:50px;resize:vertical;}
              <textarea id="practice" placeholder="輸入建議練習內容..."></textarea>
            </div>
          </div>
-
-        <div class="form-row">
-          <div class="label">其他備註</div>
-          <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
-            <textarea id="otherNotes" placeholder="其他備註..." style="min-height:50px;"></textarea>
-          </div>
-        </div>
 
         <div class="form-row" style="align-items:center;">
           <div style="display:flex;align-items:center;gap:8px;">
@@ -1636,9 +1636,10 @@ function generatePreview(){
     }
   }
   parts.push(`程度：${degree}`);
+  // 將其他備註放在需加強之前
+  if(otherNotes) parts.push(otherNotes);
   if(need) parts.push(`需加強：${need}`);
   if(practice) parts.push(`建議練習：${practice}`);
-  if(otherNotes) parts.push(otherNotes);
 
   let corePrefix = '';
   if(includeCore && corePartsAll.length){
