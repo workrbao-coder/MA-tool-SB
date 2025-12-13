@@ -1574,31 +1574,61 @@ window.addEventListener('load', ()=>{
     loadDegreeOptions();
     // Editor is hidden; do not call loadDegreeList() to avoid unnecessary operations
     ensurePracticeTemplatesInitialized();
-    // Try to sync templates from Firebase first (if available), otherwise use localStorage defaults
+
+    // ===== 新：優雅處理 Firebase 與本機 templates 的初始化與同步 =====
     try{
       if(window.maDb){
-        // practice templates
-        firebaseRead('practiceTemplates_v1').then(data=>{
-          if(data && typeof data === 'object'){
-            savePracticeTemplates(data);
+        // 先嘗試一次性從 Firebase 讀取 practice / need，避免在本機空白時覆寫遠端
+        Promise.all([firebaseRead('practiceTemplates_v1'), firebaseRead('needTemplates_v1')])
+        .then(([pData, nData])=>{
+          // practice
+          if(pData && typeof pData === 'object'){
+            // 遠端有資料 -> 覆寫本機
+            savePracticeTemplates(pData);
+          } else {
+            // 遠端無資料 -> 確保本機有預設，並將預設寫回遠端（savePracticeTemplates 會寫 firebase）
+            const cur = getPracticeTemplates();
+            if(!cur || typeof cur !== 'object'){
+              savePracticeTemplates(JSON.parse(JSON.stringify(defaultPracticeTemplatesByLevel)));
+            }
           }
-          loadPracticeList(); renderPracticeQuickButtons();
-        }).catch(()=>{ loadPracticeList(); renderPracticeQuickButtons(); });
-        // listen for remote changes
-        try{ window.maDb.ref('practiceTemplates_v1').on('value', snap=>{ const v = snap.val(); if(v){ savePracticeTemplates(v); loadPracticeList(); renderPracticeQuickButtons(); } }); }catch(e){}
 
-        // need templates
-        firebaseRead('needTemplates_v1').then(data=>{
-          if(data && typeof data === 'object'){
-            saveNeedTemplates(data);
+          // need
+          if(nData && typeof nData === 'object'){
+            saveNeedTemplates(nData);
+          } else {
+            const curN = getNeedTemplates();
+            if(!curN || typeof curN !== 'object'){
+              saveNeedTemplates(JSON.parse(JSON.stringify(defaultNeedTemplatesByLevel)));
+            }
           }
+
+          // render UI
+          loadPracticeList(); renderPracticeQuickButtons();
           loadNeedList(); renderNeedQuickButtons();
-        }).catch(()=>{ loadNeedList(); renderNeedQuickButtons(); });
+        })
+        .catch((err)=>{
+          console.warn('firebaseRead failed, fallback to local', err);
+          // fallback: 使用本機初始化函式（保持舊邏輯）
+          ensurePracticeTemplatesInitialized();
+          ensureNeedTemplatesInitialized();
+          loadPracticeList(); renderPracticeQuickButtons();
+          loadNeedList(); renderNeedQuickButtons();
+        });
+
+        // 保留 realtime listener（若遠端後續有變更會自動更新本機與 UI）
+        try{ window.maDb.ref('practiceTemplates_v1').on('value', snap=>{ const v = snap.val(); if(v){ savePracticeTemplates(v); loadPracticeList(); renderPracticeQuickButtons(); } }); }catch(e){}
         try{ window.maDb.ref('needTemplates_v1').on('value', snap=>{ const v = snap.val(); if(v){ saveNeedTemplates(v); loadNeedList(); renderNeedQuickButtons(); } }); }catch(e){}
       } else {
-        loadPracticeList(); renderPracticeQuickButtons(); loadNeedList(); renderNeedQuickButtons();
+        // 無 Firebase：使用本地初始化（原本行為）
+        ensurePracticeTemplatesInitialized();
+        ensureNeedTemplatesInitialized();
+        loadPracticeList(); renderPracticeQuickButtons();
+        loadNeedList(); renderNeedQuickButtons();
       }
-    }catch(e){ console.warn('firebase sync error', e); loadPracticeList(); renderPracticeQuickButtons(); loadNeedList(); renderNeedQuickButtons(); }
+    }catch(e){ console.warn('firebase sync error', e); ensurePracticeTemplatesInitialized(); ensureNeedTemplatesInitialized(); loadPracticeList(); renderPracticeQuickButtons(); loadNeedList(); renderNeedQuickButtons(); }
+    // ===== end sync logic =====
+
     initTriStateRemarks();
     toggleSkillsDisplay();
 
@@ -2090,9 +2120,6 @@ if(resetPracticeBtn){
     alert('已重置為預設');
   };
 }
-
-// 編輯頁等級變更需更新列表
-if($('editPracticeLevel')) $('editPracticeLevel').addEventListener('change', loadPracticeList);
 
 // ---------- 需加強（Need）：載入 / 編輯 / 快速新增 ----------
 function loadNeedList(){
