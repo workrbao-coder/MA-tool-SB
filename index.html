@@ -1,7 +1,8 @@
 <!-- 
 更新：
-  1. 2.7.7
+  1. 2.7.8
   2. 編輯頁面雲端同步
+  3. 拖曳排序 fix
   
 -->
 <!doctype html>
@@ -13,7 +14,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.7.7';
+  const APP_VERSION = 'v2.7.8';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -2049,10 +2050,17 @@ function loadPracticeList(){
     listEl.appendChild(li);
   });
 
-  // 排序支援
+  // 排序支援 - 若先前已有 Sortable 實例，先 destroy 再建立
   try{
-    Sortable.create(listEl, {
+    if(listEl._sortable && typeof listEl._sortable.destroy === 'function'){
+      try{ listEl._sortable.destroy(); }catch(e){}
+      listEl._sortable = null;
+    }
+    // 使用 span 作為拖曳 handle，避免按到按鈕時觸發拖曳
+    listEl._sortable = Sortable.create(listEl, {
       animation:150,
+      handle: 'span',
+      draggable: 'li',
       onEnd:function(){
         const newOrder = Array.from(listEl.querySelectorAll('li span')).map(s=>s.textContent);
         const cur = getPracticeTemplates() || {};
@@ -2162,8 +2170,14 @@ function loadNeedList(){
     li.appendChild(span); li.appendChild(del); listEl.appendChild(li);
   });
   try{
-    Sortable.create(listEl, {
+    if(listEl._sortable && typeof listEl._sortable.destroy === 'function'){
+      try{ listEl._sortable.destroy(); }catch(e){}
+      listEl._sortable = null;
+    }
+    listEl._sortable = Sortable.create(listEl, {
       animation:150,
+      handle: 'span',
+      draggable: 'li',
       onEnd:function(){
         const newOrder = Array.from(listEl.querySelectorAll('li span')).map(s=>s.textContent);
         const cur = getNeedTemplates() || {};
@@ -2425,7 +2439,7 @@ function closeNeedQuickList(){
 })();
 
 
-// ---------- 補：清空/恢復按鈕行為（bind 到 #toggleResetRestoreBtn） ----------
+ // ---------- 補：清空/恢復按鈕行為（bind 到 #toggleResetRestoreBtn） ----------
 (function bindToggleResetRestore(){
   const btn = $('toggleResetRestoreBtn');
   if(!btn) return;
