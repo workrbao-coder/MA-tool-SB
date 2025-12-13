@@ -895,9 +895,16 @@ function savePracticeTemplates(obj){
   try{ if(window.maDb){ firebaseWrite('practiceTemplates_v1', obj).catch(()=>{}); } }catch(e){}
 }
 function ensurePracticeTemplatesInitialized(){
-  let cur = getPracticeTemplates();
+  // 改為：若有 Firebase（遠端）則不以內建預設覆蓋遠端。
+  // 只有在沒有 Firebase 可用且本機 localStorage 也沒有資料時，才會以內建 default 作為離線預設。
+  const cur = getPracticeTemplates();
+  if(window.maDb){
+    // 若使用 Firebase，不要自動寫入內建預設以免覆蓋遠端資料。
+    // 若本機已有資料則保留；否則等待遠端同步器（on value listener）或使用者手動新增。
+    return;
+  }
+  // 無 Firebase：維持舊有 local fallback 行為（若 localStorage 無資料則初始化內建預設）
   if(!cur || typeof cur !== 'object'){
-    // deep copy default
     savePracticeTemplates(JSON.parse(JSON.stringify(defaultPracticeTemplatesByLevel)));
     return;
   }
@@ -934,7 +941,11 @@ function saveNeedTemplates(obj){
   try{ if(window.maDb){ firebaseWrite('needTemplates_v1', obj).catch(()=>{}); } }catch(e){}
 }
 function ensureNeedTemplatesInitialized(){
-  let cur = getNeedTemplates();
+  // 與 practice 同理：若有 Firebase 則不要以內建預設覆蓋遠端
+  const cur = getNeedTemplates();
+  if(window.maDb){
+    return;
+  }
   if(!cur || typeof cur !== 'object'){
     saveNeedTemplates(JSON.parse(JSON.stringify(defaultNeedTemplatesByLevel)));
     return;
@@ -1582,26 +1593,25 @@ window.addEventListener('load', ()=>{
         // 先嘗試一次性從 Firebase 讀取 practice / need，避免在本機空白時覆寫遠端
         Promise.all([firebaseRead('practiceTemplates_v1'), firebaseRead('needTemplates_v1')])
         .then(([pData, nData])=>{
-          // practice
-          if(pData && typeof pData === 'object'){
-            // 遠端有資料 -> 覆寫本機
+          // 優先使用遠端資料；若遠端為空但本機已有資料，則以本機為來源寫回遠端；若兩者皆無，則不使用內建預設以避免覆寫遠端
+          const localP = getPracticeTemplates();
+          if(pData && typeof pData === 'object' && Object.keys(pData).length){
             savePracticeTemplates(pData);
+          } else if(localP && typeof localP === 'object' && Object.keys(localP).length){
+            // push local -> remote
+            savePracticeTemplates(localP);
           } else {
-            // 遠端無資料 -> 確保本機有預設，並將預設寫回遠端（savePracticeTemplates 會寫 firebase）
-            const cur = getPracticeTemplates();
-            if(!cur || typeof cur !== 'object'){
-              savePracticeTemplates(JSON.parse(JSON.stringify(defaultPracticeTemplatesByLevel)));
-            }
+            // leave local empty (do not write built-in defaults)
+            try{ if(!localP || typeof localP !== 'object') localStorage.setItem('practiceTemplates_v1', JSON.stringify({})); }catch(e){}
           }
 
-          // need
-          if(nData && typeof nData === 'object'){
+          const localN = getNeedTemplates();
+          if(nData && typeof nData === 'object' && Object.keys(nData).length){
             saveNeedTemplates(nData);
+          } else if(localN && typeof localN === 'object' && Object.keys(localN).length){
+            saveNeedTemplates(localN);
           } else {
-            const curN = getNeedTemplates();
-            if(!curN || typeof curN !== 'object'){
-              saveNeedTemplates(JSON.parse(JSON.stringify(defaultNeedTemplatesByLevel)));
-            }
+            try{ if(!localN || typeof localN !== 'object') localStorage.setItem('needTemplates_v1', JSON.stringify({})); }catch(e){}
           }
 
           // render UI
@@ -1999,10 +2009,8 @@ function loadPracticeList(){
   const listEl = $('practiceList');
   if(!listEl) return;
   listEl.innerHTML = '';
-
   const all = getPracticeTemplates() || {};
   all[lvl] = Array.isArray(all[lvl]) ? all[lvl] : [];
-
   all[lvl].forEach((txt, idx)=>{
     const li = document.createElement('li');
     li.className = 'degree-item';
@@ -2049,14 +2057,12 @@ function loadPracticeList(){
     li.appendChild(del);
     listEl.appendChild(li);
   });
-
-  // 排序支援 - 若先前已有 Sortable 實例，先 destroy 再建立
+  // 排序支援：若已建立過 Sortable 則先 destroy 再建立，並使用 span 作為 handle 避免誤觸按鈕
   try{
     if(listEl._sortable && typeof listEl._sortable.destroy === 'function'){
       try{ listEl._sortable.destroy(); }catch(e){}
       listEl._sortable = null;
     }
-    // 使用 span 作為拖曳 handle，避免按到按鈕時觸發拖曳
     listEl._sortable = Sortable.create(listEl, {
       animation:150,
       handle: 'span',
@@ -2065,11 +2071,14 @@ function loadPracticeList(){
         const newOrder = Array.from(listEl.querySelectorAll('li span')).map(s=>s.textContent);
         const cur = getPracticeTemplates() || {};
         cur[lvl] = newOrder;
+        // savePracticeTemplates 會同步到 localStorage 與 Firebase（若可用）
         savePracticeTemplates(cur);
         renderPracticeQuickButtons();
       }
     });
   }catch(e){}
+
+  
 }
 
 // ---------- add practice template ----------
