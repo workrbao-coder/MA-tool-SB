@@ -14,7 +14,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.7.8';
+  const APP_VERSION = 'v2.7.9';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -1205,6 +1205,24 @@ function toggleSkillsDisplay(){
   // 顯示反腳勾選：只在等級 4-7 顯示
   const revWrap = document.getElementById('reverseFootWrap');
   if(revWrap) revWrap.style.display = ['4','5','6','7'].includes(lvl) ? '' : 'none';
+
+  // 根據需求：等級1-3 隱藏「直板出界」選項；等級4 僅顯示「直板出界」其餘必要技能隱藏；其他等級還原預設顯示
+  try{
+    const remarks = Array.from(document.querySelectorAll('#requiredSkills .remark')).filter(r=>r.tagName==='INPUT');
+    remarks.forEach(r=>{
+      const lab = r.closest('label'); if(!lab) return;
+      if(lvl === '4'){
+        // 只留直板出界
+        lab.style.display = (r.value === '直板出界') ? '' : 'none';
+      } else if(['1','2','3'].includes(lvl)){
+        // 隱藏直板出界
+        lab.style.display = (r.value === '直板出界') ? 'none' : '';
+      } else {
+        // 其他等級還原顯示（由欄位可見性控制）
+        lab.style.display = '';
+      }
+    });
+  }catch(e){}
 }
 
 // 調整必要技能表格的可見欄位
@@ -1716,8 +1734,12 @@ function generatePreview(){
   if(includeRequired){
     if(level === '5'){
       remarkElems = Array.from(document.querySelectorAll('#requiredSkills tbody tr td:nth-child(3) .remark'));
+    } else if(level === '4'){
+      // level4: only consider the '直板出界' checkbox
+      remarkElems = Array.from(document.querySelectorAll('#requiredSkills .remark')).filter(r=>r.tagName==='INPUT' && r.value === '直板出界');
     } else {
-      remarkElems = Array.from(document.querySelectorAll('#requiredSkills .remark'));
+      // level1-3: exclude '直板出界' from exported remarks
+      remarkElems = Array.from(document.querySelectorAll('#requiredSkills .remark')).filter(r=> !(['1','2','3'].includes(level) && r.value === '直板出界'));
     }
   } else {
     remarkElems = [];
@@ -1768,7 +1790,8 @@ function generatePreview(){
 
   let corePrefix = '';
   if(includeCore && corePartsAll.length){
-    corePrefix = corePartsAll.join(' ');
+    // 等級7 的核心技能以頓號（、）作為間隔
+    corePrefix = corePartsAll.join('、');
   }
   let body = parts.join(' ///');
   if(remarkTexts.length) body += ' ///' + remarkTexts.join(' ');
@@ -1776,7 +1799,7 @@ function generatePreview(){
   if(corePrefix) final = corePrefix + (body ? ' ///' + body : '');
 
   $('preview').textContent = final || '尚未產生評語。';
-  if($('coreOutput')) $('coreOutput').textContent = corePartsAll.join(' ');
+  if($('coreOutput')) $('coreOutput').textContent = corePartsAll.join('、');
 }
 
 // 綁定原本按鈕行為（按鈕仍存在但會隱藏）
