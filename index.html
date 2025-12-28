@@ -709,13 +709,39 @@ textarea{min-height:50px;resize:vertical;}
     }catch(e){ console.warn('firebaseWrite', e); }
     return Promise.resolve();
   }
-  function firebaseRead(key){
+  // 替換：更可靠的 firebaseRead，包含重試與完整除錯輸出
+  function firebaseRead(key, retries = 5, delay = 800){
     return new Promise((resolve)=>{
-      try{
-        if(window.maDb){
-          window.maDb.ref(key).once('value').then(s=> resolve(s.val()));
-        } else resolve(null);
-      }catch(e){ console.warn('firebaseRead', e); resolve(null); }
+      if(!window.maDb){
+        console.warn('firebaseRead: no maDb available for key=', key);
+        return resolve(null);
+      }
+      let attempt = 0;
+      const tryOnce = ()=>{
+        attempt++;
+        try{
+          window.maDb.ref(key).once('value')
+          .then(snap=>{
+            const val = snap && snap.val();
+            console.log(`firebaseRead: key=${key} success (attempt ${attempt})`, val);
+            return resolve(val);
+          })
+          .catch(err=>{
+            console.warn(`firebaseRead: key=${key} failed on attempt ${attempt}`, err);
+            if(attempt < retries){
+              setTimeout(tryOnce, delay);
+            } else {
+              console.error(`firebaseRead: key=${key} all ${retries} attempts failed`);
+              resolve(null);
+            }
+          });
+        }catch(e){
+          console.warn(`firebaseRead: key=${key} exception on attempt ${attempt}`, e);
+          if(attempt < retries) setTimeout(tryOnce, delay);
+          else resolve(null);
+        }
+      };
+      tryOnce();
     });
   }
 </script>
@@ -899,7 +925,7 @@ function ensurePracticeTemplatesInitialized(){
   // 只有在沒有 Firebase 可用且本機 localStorage 也沒有資料時，才會以內建 default 作為離線預設。
   const cur = getPracticeTemplates();
   if(window.maDb){
-    // 若使用 Firebase，不要自動寫入內建預設以免覆蓋遠端資料。
+    // 若使用 Firebase，不要自動寫入內建預設以免覆蓋遠端。
     // 若本機已有資料則保留；否則等待遠端同步器（on value listener）或使用者手動新增。
     return;
   }
@@ -2094,7 +2120,6 @@ function loadPracticeList(){
         const newOrder = Array.from(listEl.querySelectorAll('li span')).map(s=>s.textContent);
         const cur = getPracticeTemplates() || {};
         cur[lvl] = newOrder;
-        // savePracticeTemplates 會同步到 localStorage 與 Firebase（若可用）
         savePracticeTemplates(cur);
         renderPracticeQuickButtons();
       }
