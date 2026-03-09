@@ -14,7 +14,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.7.9';
+  const APP_VERSION = 'v2.8.0';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -353,7 +353,7 @@ textarea{min-height:50px;resize:vertical;}
               <option>中</option>
               <option>高</option>
             </select>
-            <label id="reverseFootWrap" style="display:none;margin-left:8px;" title="反腳：遇到需要反腳的情況請勾選"><input id="reverseFoot" type="checkbox">反腳</label>
+            <label id="reverseFootWrap" style="display:none;margin-left:8px;" title="反腳：遇到需要反腳的情況請勾選"><input id="reverseFoot" type="checkbox">反腳<input id="reverseFootProgress" type="text" placeholder="例：4-2" style="width:80px;margin-left:8px;padding:6px;border:1px solid #e6e6e6;border-radius:6px;font-size:13px;" title="填寫反腳進度，例：4-2"></label>
           </div>
 
           <!-- 第二列：程度（與類型、特質同列） -->
@@ -1169,7 +1169,21 @@ document.querySelectorAll('.tab').forEach(t=>{
 });
 
 // ---------- events ----------
-$('level').addEventListener('change', ()=>{ loadDegreeOptions(); toggleSkillsDisplay(); });
+$('level').addEventListener('change', ()=>{ 
+  // 切換等級時還原評級、能力、程度、特質、反腳
+  if($('rating')) $('rating').value = '未評級';
+  if($('levelState')) $('levelState').value = '';
+  if($('character')) $('character').value = '';
+  if($('degreeSelect')) $('degreeSelect').value = '';
+  if($('reverseFoot')) $('reverseFoot').checked = false;
+  if($('reverseFootProgress')) $('reverseFootProgress').value = '';
+  
+  loadDegreeOptions(); 
+  toggleSkillsDisplay();
+  
+  // 觸發預覽更新
+  try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+});
 $('editLevel').addEventListener('change', loadDegreeList);
 // 當能力改變時，重新載入程度選單以進行過濾
 if(document.getElementById('levelState')){
@@ -1191,7 +1205,7 @@ if(document.getElementById('degreeSelect')){
   });
 }
 
-// 切換必要技能 / 核心技能 顯示：等級 1-4 顯示必要技能；等級 7 顯示核心技能；其他隱藏
+// 切換必要技能 / 核心技能 顯示：等級 1-3 隱藏四級；等級 4 隱藏一級和三級；等級 5-6 顯示四級；等級 7 顯示核心技能；其他隱藏
 function toggleSkillsDisplay(){
   const lvl = $('level') ? $('level').value : '';
   const req = document.getElementById('requiredSkills');
@@ -1200,20 +1214,28 @@ function toggleSkillsDisplay(){
   const btnAll = document.getElementById('toggleRequiredAllBtn'); // 新增：取得「清除」按鈕
   if(!req || !core || !lbl) return;
 
-  if(['1','2','3','4'].includes(lvl)){
+  if(['1','2','3'].includes(lvl)){
+    // 等級1-3：隱藏四級欄位，顯示一級和三級
     lbl.textContent = '必要技能';
     lbl.style.display = 'block';
     req.style.display = 'block';
-    // 顯示所有欄位
-    adjustRequiredColumns('all');
+    adjustRequiredColumns('level1to3');
     core.style.display = 'none';
     if(btnAll) btnAll.style.display = ''; // 顯示按鈕（恢復原始顯示）
-  } else if(lvl === '5'){
-    // 等級5：顯示「必要技能」但僅顯示四級欄位
+  } else if(lvl === '4'){
+    // 等級4：隱藏一級和三級，只顯示四級欄位
     lbl.textContent = '必要技能';
     lbl.style.display = 'block';
     req.style.display = 'block';
-    adjustRequiredColumns('four');
+    adjustRequiredColumns('level4only');
+    core.style.display = 'none';
+    if(btnAll) btnAll.style.display = ''; // 顯示按鈕
+  } else if(['5','6'].includes(lvl)){
+    // 等級5-6：顯示「必要技能」但僅顯示四級欄位
+    lbl.textContent = '必要技能';
+    lbl.style.display = 'block';
+    req.style.display = 'block';
+    adjustRequiredColumns('level5to6');
     core.style.display = 'none';
     if(btnAll) btnAll.style.display = ''; // 顯示按鈕
   } else if(lvl === '7'){
@@ -1258,11 +1280,16 @@ function adjustRequiredColumns(mode){
   if(!table) return;
   const ths = table.querySelectorAll('thead th');
   const tds = table.querySelectorAll('tbody tr');
-  if(mode === 'all'){
-    ths.forEach(th=> th.style.display = '');
-    tds.forEach(tr=> Array.from(tr.children).forEach(td=> td.style.display = ''));
-  } else if(mode === 'four'){
-    // 隱藏第一、第二欄，仅顯示第三（四級）
+  if(mode === 'level1to3'){
+    // 等級1-3：隱藏四級（第三欄），顯示一級和三級
+    ths.forEach((th,i)=> th.style.display = (i===2 ? 'none' : ''));
+    tds.forEach(tr=> Array.from(tr.children).forEach((td,i)=> td.style.display = (i===2 ? 'none' : '')));
+  } else if(mode === 'level4only'){
+    // 等級4：隱藏一級和三級，只顯示四級
+    ths.forEach((th,i)=> th.style.display = (i===2 ? '' : 'none'));
+    tds.forEach(tr=> Array.from(tr.children).forEach((td,i)=> td.style.display = (i===2 ? '' : 'none')));
+  } else if(mode === 'level5to6'){
+    // 等級5-6：只顯示四級
     ths.forEach((th,i)=> th.style.display = (i===2 ? '' : 'none'));
     tds.forEach(tr=> Array.from(tr.children).forEach((td,i)=> td.style.display = (i===2 ? '' : 'none')));
   }
@@ -1735,6 +1762,7 @@ function generatePreview(){
   const practice = $('practice') ? $('practice').value.trim() : '';
   const otherNotes = $('otherNotes') ? $('otherNotes').value.trim() : '';
   const reverseFootChecked = $('reverseFoot') ? !!$('reverseFoot').checked : false;
+  const reverseFootProgress = $('reverseFootProgress') ? $('reverseFootProgress').value.trim() : '';
 
   // sanitize ability display：若 levelState 內誤帶數字，移除前導數字以避免產生 "2中" 型式
   let state = (levelStateRaw || '').replace(/^\d+/, '');
@@ -1801,14 +1829,17 @@ function generatePreview(){
     parts.push(abilityDisplay);
   }
   if(type) parts.push(type);
-  if(char) parts.push(char);
+  
+  // 處理反腳顯示：若勾選且有進度則顯示「反腳{進度}」，否則只顯示「反腳」
   if(reverseFootChecked){
-    if(parts.length){
-      parts[0] = parts[0] + '，反腳';
+    if(reverseFootProgress){
+      parts.push(`反腳${reverseFootProgress}`);
     } else {
       parts.push('反腳');
     }
   }
+  
+  if(char) parts.push(char);
   parts.push(`程度：${degree}`);
   // 將其他備註放在需加強之前
   if(otherNotes) parts.push(otherNotes);
@@ -1875,7 +1906,7 @@ function startInputsClearedMonitor(){
   // 只要使用者在三個文字欄位輸入，就取消輸入恢復
   _inputsMonitorHandlerInput = (e)=>{
     const t = e && e.target; if(!t) return;
-    const targetIds = ['needImprove','practice','otherNotes'];
+    const targetIds = ['needImprove','practice','otherNotes','reverseFootProgress'];
     if((t.tagName === 'TEXTAREA' || t.tagName === 'INPUT') && targetIds.includes(t.id)){
       cancelInputsRestore();
     }
@@ -2528,7 +2559,8 @@ function closeNeedQuickList(){
         needImprove: (savedInputsState && savedInputsState.needImprove) ? savedInputsState.needImprove : ($('needImprove') ? $('needImprove').value : ''),
         practice: (savedInputsState && savedInputsState.practice) ? savedInputsState.practice : ($('practice') ? $('practice').value : ''),
         otherNotes: (savedInputsState && savedInputsState.otherNotes) ? savedInputsState.otherNotes : ($('otherNotes') ? $('otherNotes').value : ''),
-        reverseFoot: (savedInputsState && typeof savedInputsState.reverseFoot !== 'undefined') ? !!savedInputsState.reverseFoot : ($('reverseFoot') ? !!$('reverseFoot').checked : false)
+        reverseFoot: (savedInputsState && typeof savedInputsState.reverseFoot !== 'undefined') ? !!savedInputsState.reverseFoot : ($('reverseFoot') ? !!$('reverseFoot').checked : false),
+        reverseFootProgress: $('reverseFootProgress') ? $('reverseFootProgress').value : ''
       };
       // 必要技能狀態
       savedInputState.remarks = Array.from(document.querySelectorAll('#requiredSkills .remark'))
@@ -2553,6 +2585,7 @@ function closeNeedQuickList(){
       if($('practice')) $('practice').value = '';
       if($('otherNotes')) $('otherNotes').value = '';
       if($('reverseFoot')) $('reverseFoot').checked = false;
+      if($('reverseFootProgress')) $('reverseFootProgress').value = '';
       // 清除必要技能
       document.querySelectorAll('#requiredSkills .remark').forEach(r=>{ if(r.tagName==='INPUT') setRemarkStateFor(r,'no'); });
       // 清除核心技能選取（保留 UI 空白）
@@ -2591,6 +2624,7 @@ function closeNeedQuickList(){
     if('practice' in s && $('practice')) $('practice').value = s.practice || '';
     if('otherNotes' in s && $('otherNotes')) $('otherNotes').value = s.otherNotes || '';
     if('reverseFoot' in s && $('reverseFoot')) $('reverseFoot').checked = !!s.reverseFoot;
+    if('reverseFootProgress' in s && $('reverseFootProgress')) $('reverseFootProgress').value = s.reverseFootProgress || '';
     if(Array.isArray(s.remarks)){
       const inputs = Array.from(document.querySelectorAll('#requiredSkills .remark')).filter(r=>r.tagName==='INPUT');
       inputs.forEach((r,i)=>{ const st = (s.remarks[i] && s.remarks[i].state) ? s.remarks[i].state : 'no'; setRemarkStateFor(r, st); });
@@ -2627,7 +2661,8 @@ function closeNeedQuickList(){
         needImprove: $('needImprove') ? $('needImprove').value : '',
         practice: $('practice') ? $('practice').value : '',
         otherNotes: $('otherNotes') ? $('otherNotes').value : '',
-        reverseFoot: $('reverseFoot') ? !!$('reverseFoot').checked : false
+        reverseFoot: $('reverseFoot') ? !!$('reverseFoot').checked : false,
+        reverseFootProgress: $('reverseFootProgress') ? $('reverseFootProgress').value : ''
       };
       try{ sessionStorage.setItem('savedInputsState_v1', JSON.stringify(savedInputsState)); }catch(e){}
 
@@ -2636,6 +2671,7 @@ function closeNeedQuickList(){
       if($('practice')) $('practice').value = '';
       if($('otherNotes')) $('otherNotes').value = '';
       if($('reverseFoot')) $('reverseFoot').checked = false;
+      if($('reverseFootProgress')) $('reverseFootProgress').value = '';
       try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
 
       // 切換按鈕狀態
@@ -2666,6 +2702,7 @@ function closeNeedQuickList(){
     if('practice' in s && $('practice')) $('practice').value = s.practice || '';
     if('otherNotes' in s && $('otherNotes')) $('otherNotes').value = s.otherNotes || '';
     if('reverseFoot' in s && $('reverseFoot')) $('reverseFoot').checked = !!s.reverseFoot;
+    if('reverseFootProgress' in s && $('reverseFootProgress')) $('reverseFootProgress').value = s.reverseFootProgress || '';
     try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
 
     ibtn.textContent = '清空輸入'; ibtn.classList.remove('restore'); ibtn.classList.add('clear');
