@@ -1821,24 +1821,24 @@ function generatePreview(){
   }).filter(Boolean);
 
   const parts = [];
-  // 將能力顯示改為包含等級數字（例如：2中）
-  const abilityDisplay = `${level}${state}`;
+  // 將能力顯示改為包含等級數字（例如：2中），並在後面接上反腳資訊
+  let abilityDisplay = `${level}${state}`;
+  
+  // 處理反腳顯示：若勾選且有進度則顯示「反腳{進度}」，否則只顯示「反腳」
+  if(reverseFootChecked){
+    if(reverseFootProgress){
+      abilityDisplay += `，反腳${reverseFootProgress}`;
+    } else {
+      abilityDisplay += '，反腳';
+    }
+  }
+  
   if(rating && rating !== '未評級'){
     parts.push(`${rating}，${abilityDisplay}`);
   } else {
     parts.push(abilityDisplay);
   }
   if(type) parts.push(type);
-  
-  // 處理反腳顯示：若勾選且有進度則顯示「反腳{進度}」，否則只顯示「反腳」
-  if(reverseFootChecked){
-    if(reverseFootProgress){
-      parts.push(`反腳${reverseFootProgress}`);
-    } else {
-      parts.push('反腳');
-    }
-  }
-  
   if(char) parts.push(char);
   parts.push(`程度：${degree}`);
   // 將其他備註放在需加強之前
