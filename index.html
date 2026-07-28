@@ -14,7 +14,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.0';
+  const APP_VERSION = 'v2.8.1';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -27,7 +27,7 @@
 </script>
 
 
-<link rel="icon" type="image/png" href="MA-icon.png" />
+<link rel="icon" type="image/png" href="./MA-icon.png" />
 <title>MA產生器 (單板)</title>
 <style>
 :root{
@@ -42,7 +42,7 @@
 *{box-sizing:border-box;font-family:"Noto Sans TC",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;font-size:90%;}
 body{margin:0;background:var(--light-gray);color:var(--soft-black);padding:20px;}
 .header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
-.logo{width:28px;height:28px;border-radius:6px;background:var(--brand-blue);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;}
+.logo{width:28px;height:28px;border-radius:6px;display:block;object-fit:contain;flex:0 0 auto;}
 .title{font-size:18px;font-weight:700;}
 .container{max-width:1100px;margin:0 auto;background:var(--white);border-radius:16px;padding:18px;box-shadow:0 6px 20px rgba(0,0,0,0.08);}
 .tabs{display:flex;gap:8px;border-bottom:1px solid #eee;padding-bottom:6px;margin-bottom:18px;}
@@ -222,7 +222,7 @@ textarea{min-height:50px;resize:vertical;}
 
 /* 手機響應：移除偏移 */
 @media(max-width:980px){
-  #degreeSelect, #rating, #character{
+  #level, #rating, #levelState, #type, #degreeSelect, #character{
     width:100% !important;
     transform:none !important;
     display:block;
@@ -301,8 +301,8 @@ textarea{min-height:50px;resize:vertical;}
 </head>
 <body>
 <div class="header">
-  <div class="logo">MA</div>
-  <div class="title">評語產生器(SB)<span class="version">v2.7.1　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <img class="logo" src="./MA-icon.png" alt="MA">
+  <div class="title">評語產生器(SB)<span class="version">v2.8.1　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">
@@ -618,44 +618,6 @@ textarea{min-height:50px;resize:vertical;}
     </div>
   </div>
 
-  <!-- 加強內容範本（需加強編輯） -->
-  <div class="content" id="needTab" style="display:none">
-    <div class="card">
-      <h3>加強內容</h3>
-      <div class="form-row">
-        <div class="label">選擇等級</div>
-        <select id="editNeedLevel" class="select small">
-          <option value="1">等級1</option>
-          <option value="2">等級2</option>
-          <option value="3">等級3</option>
-          <option value="4">等級4</option>
-          <option value="5">等級5</option>
-          <option value="6">等級6</option>
-          <option value="7">等級7</option>
-        </select>
-      </div>
-
-      <div class="form-row">
-        <div class="label">現有項目</div>
-        <div style="flex:1">
-          <ul id="needList" style="list-style:none;padding-left:0;margin:0;max-height:320px;overflow:auto;"></ul>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="label">新增項目</div>
-        <input id="newNeed" type="text" placeholder="輸入新的加強內容..." />
-        <button class="btn primary" id="addNeedBtn">新增</button>
-      </div>
-
-      <div class="actions">
-        <button class="btn ghost" id="exportNeedBtn">匯出</button>
-        <button class="btn ghost" id="importNeedBtn">匯入</button>
-        <button class="btn ghost" id="resetNeedBtn">重置為預設</button>
-      </div>
-    </div>
-  </div>
-
   <!-- 使用說明 -->
   <div class="content" id="helpTab" style="display:none">
     <div class="card">
@@ -851,7 +813,15 @@ const remarkMap = {
 };
 
 // ---------- storage helpers ----------
-function getCustomOptions(){ const s = localStorage.getItem('customDegreeOptions'); return s ? JSON.parse(s) : {}; }
+function getCustomOptions(){
+  try{
+    const s = localStorage.getItem('customDegreeOptions');
+    return s ? JSON.parse(s) : {};
+  }catch(e){
+    console.warn('customDegreeOptions parse failed', e);
+    return {};
+  }
+}
 function saveCustomOptions(d){ localStorage.setItem('customDegreeOptions', JSON.stringify(d)); }
 function getDegreeOptions(){ return {...defaultDegreeOptions, ...getCustomOptions()}; }
 
@@ -916,23 +886,18 @@ function getPracticeTemplates(){
     return s ? JSON.parse(s) : null;
   } catch(e){ return null; }
 }
-function savePracticeTemplates(obj){
+function savePracticeTemplates(obj, syncRemote = true){
   try { localStorage.setItem('practiceTemplates_v1', JSON.stringify(obj)); } catch(e){}
-  // push to Firebase if available
-  try{ if(window.maDb){ firebaseWrite('practiceTemplates_v1', obj).catch(()=>{}); } }catch(e){}
+  // 只有使用者編輯時才同步；遠端讀回時傳入 false，避免讀取後又寫回。
+  if(syncRemote){
+    try{ if(window.maDb){ firebaseWrite('practiceTemplates_v1', obj).catch(()=>{}); } }catch(e){}
+  }
 }
 function ensurePracticeTemplatesInitialized(){
-  // 改為：若有 Firebase（遠端）則不以內建預設覆蓋遠端。
-  // 只有在沒有 Firebase 可用且本機 localStorage 也沒有資料時，才會以內建 default 作為離線預設。
+  // 本機永遠保留可用備援；不由此函式寫入遠端。
   const cur = getPracticeTemplates();
-  if(window.maDb){
-    // 若使用 Firebase，不要自動寫入內建預設以免覆蓋遠端。
-    // 若本機已有資料則保留；否則等待遠端同步器（on value listener）或使用者手動新增。
-    return;
-  }
-  // 無 Firebase：維持舊有 local fallback 行為（若 localStorage 無資料則初始化內建預設）
   if(!cur || typeof cur !== 'object'){
-    savePracticeTemplates(JSON.parse(JSON.stringify(defaultPracticeTemplatesByLevel)));
+    savePracticeTemplates(JSON.parse(JSON.stringify(defaultPracticeTemplatesByLevel)), false);
     return;
   }
   let changed = false;
@@ -942,7 +907,7 @@ function ensurePracticeTemplatesInitialized(){
       changed = true;
     }
   }
-  if(changed) savePracticeTemplates(cur);
+  if(changed) savePracticeTemplates(cur, false);
 }
 
 // ---------- 需加強：預設與 storage（依等級分類） ----------
@@ -962,19 +927,18 @@ function getNeedTemplates(){
     return s ? JSON.parse(s) : null;
   } catch(e){ return null; }
 }
-function saveNeedTemplates(obj){
+function saveNeedTemplates(obj, syncRemote = true){
   try { localStorage.setItem('needTemplates_v1', JSON.stringify(obj)); } catch(e){}
-  // push to Firebase if available
-  try{ if(window.maDb){ firebaseWrite('needTemplates_v1', obj).catch(()=>{}); } }catch(e){}
+  // 只有使用者編輯時才同步；遠端讀回時傳入 false，避免讀取後又寫回。
+  if(syncRemote){
+    try{ if(window.maDb){ firebaseWrite('needTemplates_v1', obj).catch(()=>{}); } }catch(e){}
+  }
 }
 function ensureNeedTemplatesInitialized(){
-  // 與 practice 同理：若有 Firebase 則不要以內建預設覆蓋遠端
+  // 本機永遠保留可用備援；不由此函式寫入遠端。
   const cur = getNeedTemplates();
-  if(window.maDb){
-    return;
-  }
   if(!cur || typeof cur !== 'object'){
-    saveNeedTemplates(JSON.parse(JSON.stringify(defaultNeedTemplatesByLevel)));
+    saveNeedTemplates(JSON.parse(JSON.stringify(defaultNeedTemplatesByLevel)), false);
     return;
   }
   let changed = false;
@@ -984,7 +948,7 @@ function ensureNeedTemplatesInitialized(){
       changed = true;
     }
   }
-  if(changed) saveNeedTemplates(cur);
+  if(changed) saveNeedTemplates(cur, false);
 }
 
 // ---------- DOM helper ----------
@@ -1665,25 +1629,23 @@ window.addEventListener('load', ()=>{
         // 先嘗試一次性從 Firebase 讀取 practice / need，避免在本機空白時覆寫遠端
         Promise.all([firebaseRead('practiceTemplates_v1'), firebaseRead('needTemplates_v1')])
         .then(([pData, nData])=>{
-          // 優先使用遠端資料；若遠端為空但本機已有資料，則以本機為來源寫回遠端；若兩者皆無，則不使用內建預設以避免覆寫遠端
+          // 遠端有資料時更新本機；遠端空白或讀取失敗時保留本機／內建備援。
           const localP = getPracticeTemplates();
           if(pData && typeof pData === 'object' && Object.keys(pData).length){
-            savePracticeTemplates(pData);
+            savePracticeTemplates(pData, false);
           } else if(localP && typeof localP === 'object' && Object.keys(localP).length){
-            // push local -> remote
-            savePracticeTemplates(localP);
+            // 保留本機資料，不因一次遠端空白或失敗而覆寫 Firebase。
           } else {
-            // leave local empty (do not write built-in defaults)
-            try{ if(!localP || typeof localP !== 'object') localStorage.setItem('practiceTemplates_v1', JSON.stringify({})); }catch(e){}
+            ensurePracticeTemplatesInitialized();
           }
 
           const localN = getNeedTemplates();
           if(nData && typeof nData === 'object' && Object.keys(nData).length){
-            saveNeedTemplates(nData);
+            saveNeedTemplates(nData, false);
           } else if(localN && typeof localN === 'object' && Object.keys(localN).length){
-            saveNeedTemplates(localN);
+            // 保留本機資料，不因一次遠端空白或失敗而覆寫 Firebase。
           } else {
-            try{ if(!localN || typeof localN !== 'object') localStorage.setItem('needTemplates_v1', JSON.stringify({})); }catch(e){}
+            ensureNeedTemplatesInitialized();
           }
 
           // render UI
@@ -1699,9 +1661,9 @@ window.addEventListener('load', ()=>{
           loadNeedList(); renderNeedQuickButtons();
         });
 
-        // 保留 realtime listener（若遠端後續有變更會自動更新本機與 UI）
-        try{ window.maDb.ref('practiceTemplates_v1').on('value', snap=>{ const v = snap.val(); if(v){ savePracticeTemplates(v); loadPracticeList(); renderPracticeQuickButtons(); } }); }catch(e){}
-        try{ window.maDb.ref('needTemplates_v1').on('value', snap=>{ const v = snap.val(); if(v){ saveNeedTemplates(v); loadNeedList(); renderNeedQuickButtons(); } }); }catch(e){}
+        // 即時監聽只更新本機快取與畫面，不再把同一份資料寫回遠端。
+        try{ window.maDb.ref('practiceTemplates_v1').on('value', snap=>{ const v = snap.val(); if(v){ savePracticeTemplates(v, false); loadPracticeList(); renderPracticeQuickButtons(); } }); }catch(e){}
+        try{ window.maDb.ref('needTemplates_v1').on('value', snap=>{ const v = snap.val(); if(v){ saveNeedTemplates(v, false); loadNeedList(); renderNeedQuickButtons(); } }); }catch(e){}
       } else {
         // 無 Firebase：使用本地初始化（原本行為）
         ensurePracticeTemplatesInitialized();
@@ -1773,7 +1735,7 @@ function generatePreview(){
     return;
   }
 
-  const includeRequired = ['1','2','3','4','5'].includes(level);
+  const includeRequired = ['1','2','3','4','5','6'].includes(level);
   const includeCore = level === '7';
 
   // 準備 coreParts（不論是否包含，都讀取目前選項以便 UI 顯示/儲存）
@@ -1787,10 +1749,8 @@ function generatePreview(){
   // 準備 required remark texts（僅當 includeRequired 為 true 才使用）
   let remarkElems = [];
   if(includeRequired){
-    if(level === '5'){
-      remarkElems = Array.from(document.querySelectorAll('#requiredSkills tbody tr td:nth-child(3) .remark'));
-    } else if(level === '4'){
-      // level4: only consider the '直板出界' checkbox
+    if(['4','5','6'].includes(level)){
+      // 等級 4、5、6 都只輸出「直板出界」。
       remarkElems = Array.from(document.querySelectorAll('#requiredSkills .remark')).filter(r=>r.tagName==='INPUT' && r.value === '直板出界');
     } else {
       // level1-3: exclude '直板出界' from exported remarks
@@ -2041,7 +2001,12 @@ $('copyBtn').onclick = ()=>{ const text = $('preview').textContent || ''; naviga
   });
 
   // load state
-  const saved = JSON.parse(localStorage.getItem('coreSkillState_v1') || '{}');
+  let saved = {};
+  try{
+    saved = JSON.parse(localStorage.getItem('coreSkillState_v1') || '{}');
+  }catch(e){
+    console.warn('coreSkillState_v1 parse failed', e);
+  }
   const arr = [];
   container.querySelectorAll('.skill-col').forEach((col,i)=>{
     arr[i] = saved[i] || '';
@@ -2052,7 +2017,7 @@ $('copyBtn').onclick = ()=>{ const text = $('preview').textContent || ''; naviga
 
   // 移除舊有「產生核心技能摘要」按鈕與 coreOutput（若存在），因為你要刪掉這些 UI
   const genCoreBtn = document.getElementById('generateCore');
-  if(genCoreBtn) genCoret.remove();
+  if(genCoreBtn) genCoreBtn.remove();
   const coreOutEl = document.getElementById('coreOutput');
   if(coreOutEl) coreOutEl.remove();
 
@@ -2537,16 +2502,29 @@ function closeNeedQuickList(){
     e.preventDefault();
     // 如果尚未清空 -> 儲存狀態並清空
     if(!isCleared){
-      // 如果目前有輸入專用的清空狀態，先把輸入的暫存值取出，並取消該輸入恢復按鈕狀態
-      if(isInputsCleared && savedInputsState && Object.keys(savedInputsState).length){
+      // 先保留「清空輸入」的快照，再切換按鈕狀態；避免建立全域快照前就把文字資料清掉。
+      let clearedInputsSnapshot = null;
+      if(isInputsCleared){
+        if(savedInputsState && Object.keys(savedInputsState).length){
+          clearedInputsSnapshot = {...savedInputsState};
+        }else{
+          try{
+            const storedInputs = JSON.parse(sessionStorage.getItem('savedInputsState_v1') || '{}');
+            if(storedInputs && Object.keys(storedInputs).length) clearedInputsSnapshot = storedInputs;
+          }catch(e){}
+        }
         // 把輸入恢復按鈕回復成「清空輸入」狀態
         const ibtn = $('toggleResetInputsBtn');
         if(ibtn){ ibtn.textContent = '清空輸入'; ibtn.classList.remove('restore'); ibtn.classList.add('clear'); }
         try{ sessionStorage.removeItem('savedInputsState_v1'); }catch(e){}
         isInputsCleared = false;
-        savedInputsState = {};
         stopInputsClearedMonitor();
       }
+      const getSnapshotValue = (key, fallback)=>{
+        return clearedInputsSnapshot && Object.prototype.hasOwnProperty.call(clearedInputsSnapshot, key)
+          ? clearedInputsSnapshot[key]
+          : fallback;
+      };
       // 儲存表單狀態
       savedInputState = {
         level: $('level') ? $('level').value : '',
@@ -2556,12 +2534,13 @@ function closeNeedQuickList(){
         character: $('character') ? $('character').value : '',
         degree: $('degreeSelect') ? $('degreeSelect').value : '',
         // 如果之前是輸入清空且有暫存，優先使用暫存值（可保留使用者在清空輸入前的內容）
-        needImprove: (savedInputsState && savedInputsState.needImprove) ? savedInputsState.needImprove : ($('needImprove') ? $('needImprove').value : ''),
-        practice: (savedInputsState && savedInputsState.practice) ? savedInputsState.practice : ($('practice') ? $('practice').value : ''),
-        otherNotes: (savedInputsState && savedInputsState.otherNotes) ? savedInputsState.otherNotes : ($('otherNotes') ? $('otherNotes').value : ''),
-        reverseFoot: (savedInputsState && typeof savedInputsState.reverseFoot !== 'undefined') ? !!savedInputsState.reverseFoot : ($('reverseFoot') ? !!$('reverseFoot').checked : false),
-        reverseFootProgress: $('reverseFootProgress') ? $('reverseFootProgress').value : ''
+        needImprove: getSnapshotValue('needImprove', $('needImprove') ? $('needImprove').value : ''),
+        practice: getSnapshotValue('practice', $('practice') ? $('practice').value : ''),
+        otherNotes: getSnapshotValue('otherNotes', $('otherNotes') ? $('otherNotes').value : ''),
+        reverseFoot: !!getSnapshotValue('reverseFoot', $('reverseFoot') ? !!$('reverseFoot').checked : false),
+        reverseFootProgress: getSnapshotValue('reverseFootProgress', $('reverseFootProgress') ? $('reverseFootProgress').value : '')
       };
+      savedInputsState = {};
       // 必要技能狀態
       savedInputState.remarks = Array.from(document.querySelectorAll('#requiredSkills .remark'))
         .filter(r=>r.tagName==='INPUT')
