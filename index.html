@@ -9,12 +9,16 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<meta name="theme-color" content="#003C96" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="MA評語SB" />
 
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.5';
+  const APP_VERSION = 'v2.8.6';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -24,10 +28,18 @@
       document.title = `${document.title} ${APP_VERSION}`;
     }
   });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(err => console.warn('service worker registration failed', err));
+    });
+  }
 </script>
 
 
 <link rel="icon" type="image/png" href="./MA-icon.png" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
+<link rel="manifest" href="./manifest.webmanifest" />
 <title>MA產生器 (單板)</title>
 <style>
 :root{
@@ -249,8 +261,8 @@ textarea{min-height:50px;resize:vertical;}
   .form-row{display:grid;grid-template-columns:54px minmax(0,1fr);gap:4px 6px;margin-bottom:6px;align-items:center;}
   .form-row[style]{width:100% !important;margin-bottom:6px !important;align-items:center !important;}
   .form-row .label{width:auto;font-size:12px;line-height:1.2;min-height:0;}
-  .top-fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 6px;}
-  .top-fields .label{font-size:11px;white-space:nowrap;}
+  .top-fields,.degree-fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 6px;}
+  .top-fields .label,.degree-fields .label{font-size:11px;white-space:nowrap;}
   .top-fields > .label:nth-child(1){grid-column:1;grid-row:1;}
   .top-fields > .label:nth-child(3){grid-column:2;grid-row:1;}
   .top-fields > .label:nth-child(5){grid-column:3;grid-row:1;}
@@ -259,6 +271,12 @@ textarea{min-height:50px;resize:vertical;}
   .top-fields #levelState{grid-column:3;grid-row:2;}
   .top-fields .select{font-size:12px;padding:6px 5px;}
   .top-fields #reverseFootWrap{grid-column:1 / -1;grid-row:3;margin-top:2px;}
+  .degree-fields{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .degree-fields > .label:nth-child(1){grid-column:1;grid-row:1;}
+  .degree-fields > .label:nth-child(3){grid-column:2;grid-row:1;}
+  .degree-fields #degreeSelect{grid-column:1;grid-row:2;}
+  .degree-fields #character{grid-column:2;grid-row:2;}
+  .degree-fields .select{font-size:12px;padding:6px 5px;}
   .select,textarea,input[type="text"]{font-size:13px;padding:7px 8px;border-radius:9px;min-width:0;}
   textarea{min-height:34px;}
   #otherNotes{min-height:38px !important;}
@@ -375,7 +393,7 @@ textarea{min-height:50px;resize:vertical;}
 <body>
 <div class="header">
   <img class="logo" src="./MA-icon.png" alt="MA">
-  <div class="title">評語產生器(SB)<span class="version">v2.8.5　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <div class="title">評語產生器(SB)<span class="version">v2.8.6　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">
@@ -430,7 +448,7 @@ textarea{min-height:50px;resize:vertical;}
           </div>
 
           <!-- 第二列：程度（與類型、特質同列） -->
-          <div class="form-row" style="width:100%;margin-bottom:8px;align-items:center;">
+          <div class="form-row degree-fields" style="width:100%;margin-bottom:8px;align-items:center;">
             <div class="label required">程度</div>
             <select id="degreeSelect" class="select" required aria-required="true" title="必填：請選擇程度" style="width:260px;margin-left:0;">
               <option value="">請先選擇等級</option>
