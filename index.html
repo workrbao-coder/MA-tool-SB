@@ -18,7 +18,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.6';
+  const APP_VERSION = 'v2.8.7';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -294,10 +294,14 @@ textarea{min-height:50px;resize:vertical;}
   .skills-row > div:last-child{width:100%;min-width:0;}
   #skillsLabel{font-size:12px;white-space:nowrap;width:auto;}
   .skills-row #toggleRequiredAllBtn{flex:0 0 auto;}
+  #toggleLevel1MobileBtn{flex:0 0 auto;}
   .remark-table{margin-top:2px;font-size:11px;}
   .remark-table thead{display:none;}
-  .remark-table,.remark-table tbody,.remark-table tr,.remark-table td{display:block;width:auto;border:0;padding:0;margin:0;}
-  .remark-cell label{gap:2px;margin-right:6px;white-space:nowrap;}
+  .remark-table,.remark-table tbody,.remark-table tr{display:block;width:100%;border:0;padding:0;margin:0;}
+  .remark-table td{display:grid;width:100%;border:0;padding:0;margin:0;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;}
+  .remark-cell label{display:inline-grid;grid-template-rows:auto auto;justify-items:center;align-items:center;gap:2px;margin-right:0;white-space:nowrap;min-width:0;}
+  .remark-cell .remark-name{order:1;font-size:9px;line-height:1.1;white-space:nowrap;}
+  .remark-cell .remark-symbol{order:2;margin:0;}
   .remark-cell input{transform:scale(1);}
   .style-block{padding:5px;gap:4px;}
   .skill-col{flex:1 1 46px;width:46px;min-width:44px;}
@@ -388,12 +392,14 @@ textarea{min-height:50px;resize:vertical;}
   #skillBlockCore .skill-row{gap:2px;}
   #skillBlockCore .skill-buttons button{width:14px;height:14px;line-height:14px;font-size:8px;border-radius:3px;}
 }
+
+#toggleLevel1MobileBtn{display:none;}
 </style>
 </head>
 <body>
 <div class="header">
   <img class="logo" src="./MA-icon.png" alt="MA">
-  <div class="title">評語產生器(SB)<span class="version">v2.8.6　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <div class="title">評語產生器(SB)<span class="version">v2.8.7　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">
@@ -515,6 +521,7 @@ textarea{min-height:50px;resize:vertical;}
           <div style="display:flex;align-items:center;gap:8px;">
             <div class="label" id="skillsLabel">必要技能</div>
             <!-- 全部勾選/取消按鈕（顯示於欄位右側） -->
+            <button id="toggleLevel1MobileBtn" type="button" class="btn ghost" style="padding:6px 8px;font-size:12px;">全選</button>
             <button id="toggleRequiredAllBtn" type="button" class="btn ghost" style="padding:6px 8px;font-size:12px;">清除</button>
           </div>
            <div style="flex:1">
@@ -1285,6 +1292,7 @@ function toggleSkillsDisplay(){
   const core = document.getElementById('coreSkills');
   const lbl = document.getElementById('skillsLabel');
   const btnAll = document.getElementById('toggleRequiredAllBtn'); // 新增：取得「清除」按鈕
+  const btnMobileAll = document.getElementById('toggleLevel1MobileBtn');
   updateDegreeRequiredState(lvl);
   if(!req || !core || !lbl) return;
 
@@ -1296,6 +1304,7 @@ function toggleSkillsDisplay(){
     adjustRequiredColumns('level1to3');
     core.style.display = 'none';
     if(btnAll) btnAll.style.display = ''; // 顯示按鈕（恢復原始顯示）
+    if(btnMobileAll) btnMobileAll.style.display = 'inline-flex';
   } else if(lvl === '4'){
     // 等級4：隱藏一級和三級，只顯示四級欄位
     lbl.textContent = '必要技能';
@@ -1304,6 +1313,7 @@ function toggleSkillsDisplay(){
     adjustRequiredColumns('level4only');
     core.style.display = 'none';
     if(btnAll) btnAll.style.display = ''; // 顯示按鈕
+    if(btnMobileAll) btnMobileAll.style.display = 'none';
   } else if(['5','6'].includes(lvl)){
     // 等級5-6：顯示「必要技能」但僅顯示四級欄位
     lbl.textContent = '必要技能';
@@ -1312,17 +1322,20 @@ function toggleSkillsDisplay(){
     adjustRequiredColumns('level5to6');
     core.style.display = 'none';
     if(btnAll) btnAll.style.display = ''; // 顯示按鈕
+    if(btnMobileAll) btnMobileAll.style.display = 'none';
   } else if(lvl === '7'){
     lbl.textContent = '核心技能';
     lbl.style.display = 'block';
     req.style.display = 'none';
     core.style.display = 'block';
     if(btnAll) btnAll.style.display = 'none'; // 等級7 隱藏清除按鈕
+    if(btnMobileAll) btnMobileAll.style.display = 'none';
   } else {
     lbl.style.display = 'none';
     req.style.display = 'none';
     core.style.display = 'none';
     if(btnAll) btnAll.style.display = 'none'; // 預設或其他等級隱藏按鈕
+    if(btnMobileAll) btnMobileAll.style.display = 'none';
   }
 
   // 顯示反腳勾選：只在等級 4-7 顯示
@@ -1594,6 +1607,19 @@ function initTriStateRemarks(){
         parentLabel.insertBefore(sym, parentLabel.firstChild);
       }
 
+      let nameSpan = parentLabel.querySelector('.remark-name');
+      if(!nameSpan){
+        nameSpan = document.createElement('span');
+        nameSpan.className = 'remark-name';
+        Array.from(parentLabel.childNodes).forEach(node=>{
+          if(node.nodeType === Node.TEXT_NODE && node.textContent.trim()){
+            nameSpan.appendChild(document.createTextNode(node.textContent.trim()));
+            node.textContent = '';
+          }
+        });
+        parentLabel.appendChild(nameSpan);
+      }
+
       // determine column index (td child index) to choose symbol mapping
       const td = r.closest('td');
       const colIndex = td ? Array.from(td.parentElement.children).indexOf(td) : 0;
@@ -1710,6 +1736,16 @@ function toggleColumn1(){
   elems.forEach(r => setRemarkStateFor(r, 'yes'));
 }
 
+function selectVisibleRequired(){
+  const elems = Array.from(document.querySelectorAll('#requiredSkills .remark')).filter(r => {
+    if(r.tagName !== 'INPUT') return false;
+    const lab = r.closest('label');
+    return lab && lab.offsetParent !== null && getComputedStyle(lab).display !== 'none';
+  });
+  if(!elems.length) return;
+  elems.forEach(r => setRemarkStateFor(r, 'yes'));
+}
+
 // 綁定按鈕（在 DOM ready / load 時會綁定，這邊保險放在 window load 初始化段落）
 window.addEventListener('load', ()=>{
   const sheetId = '1kx9lS69H_ldkeKt3Nww_k65z8IMcRgTlm86uFJtdViA';
@@ -1795,6 +1831,8 @@ window.addEventListener('load', ()=>{
 
     const btnL1 = document.getElementById('toggleLevel1Btn');
     if(btnL1) btnL1.addEventListener('click', (e)=>{ e.preventDefault(); toggleColumn1(); });
+    const btnL1Mobile = document.getElementById('toggleLevel1MobileBtn');
+    if(btnL1Mobile) btnL1Mobile.addEventListener('click', (e)=>{ e.preventDefault(); selectVisibleRequired(); });
 
     // 綁定：核心技能「恢復預設」按鈕（核心技能為 I，聯絡道為 X）
     const restoreCoreBtn = document.getElementById('restoreCoreDefaultsBtn');
