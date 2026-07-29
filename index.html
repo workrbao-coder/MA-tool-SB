@@ -18,7 +18,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.7';
+  const APP_VERSION = 'v2.8.8';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -26,6 +26,20 @@
     // 同步到 title（若尚未包含版本）
     if (document.title && !document.title.includes(APP_VERSION)) {
       document.title = `${document.title} ${APP_VERSION}`;
+    }
+    try {
+      if (typeof initTriStateRemarks === 'function') initTriStateRemarks();
+      if (typeof toggleSkillsDisplay === 'function') toggleSkillsDisplay();
+      const btnL1Mobile = document.getElementById('toggleLevel1MobileBtn');
+      if (btnL1Mobile && !btnL1Mobile.dataset.earlySelectBound) {
+        btnL1Mobile.dataset.earlySelectBound = '1';
+        btnL1Mobile.addEventListener('click', (e)=>{
+          e.preventDefault();
+          if (typeof selectVisibleRequired === 'function') selectVisibleRequired();
+        });
+      }
+    } catch (e) {
+      console.warn('early required skills init failed', e);
     }
   });
 
@@ -297,8 +311,9 @@ textarea{min-height:50px;resize:vertical;}
   #toggleLevel1MobileBtn{flex:0 0 auto;}
   .remark-table{margin-top:2px;font-size:11px;}
   .remark-table thead{display:none;}
-  .remark-table,.remark-table tbody,.remark-table tr{display:block;width:100%;border:0;padding:0;margin:0;}
-  .remark-table td{display:grid;width:100%;border:0;padding:0;margin:0;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;}
+  .remark-table,.remark-table tbody{display:block;width:100%;border:0;padding:0;margin:0;}
+  .remark-table tr{display:grid;width:100%;border:0;padding:0;margin:0;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;}
+  .remark-table td{display:contents;border:0;padding:0;margin:0;}
   .remark-cell label{display:inline-grid;grid-template-rows:auto auto;justify-items:center;align-items:center;gap:2px;margin-right:0;white-space:nowrap;min-width:0;}
   .remark-cell .remark-name{order:1;font-size:9px;line-height:1.1;white-space:nowrap;}
   .remark-cell .remark-symbol{order:2;margin:0;}
@@ -399,7 +414,7 @@ textarea{min-height:50px;resize:vertical;}
 <body>
 <div class="header">
   <img class="logo" src="./MA-icon.png" alt="MA">
-  <div class="title">評語產生器(SB)<span class="version">v2.8.7　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <div class="title">評語產生器(SB)<span class="version">v2.8.8　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">
@@ -1740,7 +1755,9 @@ function selectVisibleRequired(){
   const elems = Array.from(document.querySelectorAll('#requiredSkills .remark')).filter(r => {
     if(r.tagName !== 'INPUT') return false;
     const lab = r.closest('label');
-    return lab && lab.offsetParent !== null && getComputedStyle(lab).display !== 'none';
+    if(!lab || getComputedStyle(lab).display === 'none') return false;
+    const rect = lab.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
   });
   if(!elems.length) return;
   elems.forEach(r => setRemarkStateFor(r, 'yes'));
