@@ -14,7 +14,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.4';
+  const APP_VERSION = 'v2.8.5';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -249,6 +249,16 @@ textarea{min-height:50px;resize:vertical;}
   .form-row{display:grid;grid-template-columns:54px minmax(0,1fr);gap:4px 6px;margin-bottom:6px;align-items:center;}
   .form-row[style]{width:100% !important;margin-bottom:6px !important;align-items:center !important;}
   .form-row .label{width:auto;font-size:12px;line-height:1.2;min-height:0;}
+  .top-fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 6px;}
+  .top-fields .label{font-size:11px;white-space:nowrap;}
+  .top-fields > .label:nth-child(1){grid-column:1;grid-row:1;}
+  .top-fields > .label:nth-child(3){grid-column:2;grid-row:1;}
+  .top-fields > .label:nth-child(5){grid-column:3;grid-row:1;}
+  .top-fields #level{grid-column:1;grid-row:2;}
+  .top-fields #rating{grid-column:2;grid-row:2;}
+  .top-fields #levelState{grid-column:3;grid-row:2;}
+  .top-fields .select{font-size:12px;padding:6px 5px;}
+  .top-fields #reverseFootWrap{grid-column:1 / -1;grid-row:3;margin-top:2px;}
   .select,textarea,input[type="text"]{font-size:13px;padding:7px 8px;border-radius:9px;min-width:0;}
   textarea{min-height:34px;}
   #otherNotes{min-height:38px !important;}
@@ -261,18 +271,22 @@ textarea{min-height:50px;resize:vertical;}
   #needQuickButtons,#practiceQuickButtons{display:block !important;}
   #needQuickButtons .btn,#practiceQuickButtons .btn,#restoreCoreDefaultsBtn,#toggleRequiredAllBtn{padding:5px 8px !important;font-size:11px !important;border-radius:8px;}
   #needQuickList,#practiceQuickList{left:0 !important;right:auto !important;bottom:auto !important;top:calc(100% + 4px) !important;max-width:260px !important;min-width:190px !important;}
-  #skillsLabel{font-size:12px;}
+  .skills-row{grid-template-columns:1fr;}
+  .skills-row > div:first-child{display:flex !important;align-items:center !important;gap:4px !important;min-width:0;}
+  .skills-row > div:last-child{width:100%;min-width:0;}
+  #skillsLabel{font-size:12px;white-space:nowrap;width:auto;}
+  .skills-row #toggleRequiredAllBtn{flex:0 0 auto;}
   .remark-table{margin-top:2px;font-size:11px;}
   .remark-table thead{display:none;}
   .remark-table,.remark-table tbody,.remark-table tr,.remark-table td{display:block;width:auto;border:0;padding:0;margin:0;}
-  .remark-cell label{gap:2px;margin-right:6px;}
+  .remark-cell label{gap:2px;margin-right:6px;white-space:nowrap;}
   .remark-cell input{transform:scale(1);}
-  .style-block{padding:6px;gap:6px;}
-  .skill-col{flex:1 1 72px;width:72px;min-width:68px;}
-  .skill-name{font-size:11px;margin-bottom:4px;}
-  .skill-buttons{gap:4px;row-gap:4px;}
-  .skill-row{gap:4px;}
-  .skill-buttons button{width:18px;height:18px;line-height:18px;font-size:9px;border-radius:4px;}
+  .style-block{padding:5px;gap:4px;}
+  .skill-col{flex:1 1 46px;width:46px;min-width:44px;}
+  .skill-name{font-size:9px;margin-bottom:3px;white-space:nowrap;}
+  .skill-buttons{gap:3px;row-gap:3px;}
+  .skill-row{gap:2px;}
+  .skill-buttons button{width:14px;height:14px;line-height:14px;font-size:8px;border-radius:3px;}
   .note-required{font-size:11px;margin-top:6px;}
   .preview{min-height:58px;padding:8px;font-size:13px;line-height:1.35;}
   .preview-actions{gap:6px;margin-top:8px;}
@@ -347,12 +361,21 @@ textarea{min-height:50px;resize:vertical;}
   width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-right:8px;border:2px solid var(--brand-blue);color:var(--brand-blue);background:transparent;cursor:pointer;font-weight:700;font-size:12px;
 }
 .ability-btn.active{background:var(--brand-blue);color:#fff;}
+
+@media(max-width:640px){
+  #skillBlockCore.style-block{padding:5px;gap:4px;}
+  #skillBlockCore .skill-col{flex:1 1 46px;width:46px;min-width:44px;}
+  #skillBlockCore .skill-name{font-size:9px;margin-bottom:3px;white-space:nowrap;}
+  #skillBlockCore .skill-buttons{gap:3px;row-gap:3px;}
+  #skillBlockCore .skill-row{gap:2px;}
+  #skillBlockCore .skill-buttons button{width:14px;height:14px;line-height:14px;font-size:8px;border-radius:3px;}
+}
 </style>
 </head>
 <body>
 <div class="header">
   <img class="logo" src="./MA-icon.png" alt="MA">
-  <div class="title">評語產生器(SB)<span class="version">v2.8.4　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <div class="title">評語產生器(SB)<span class="version">v2.8.5　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">
@@ -373,7 +396,7 @@ textarea{min-height:50px;resize:vertical;}
         <!-- 改為單欄容器，確保：第一列 = 等級｜評級｜能力；第二列 = 程度；第三列 = 類型｜特質 -->
         <div style="display:block;">
           <!-- 第一列：等級 ｜ 評級 ｜ 能力 -->
-          <div class="form-row" style="width:100%;margin-bottom:8px;">
+          <div class="form-row top-fields" style="width:100%;margin-bottom:8px;">
             <div class="label required">等級</div>
             <select id="level" class="select small" required aria-required="true" title="必填：請選擇等級">
               <option value="">請選擇</option>
@@ -470,7 +493,7 @@ textarea{min-height:50px;resize:vertical;}
            </div>
          </div>
 
-        <div class="form-row" style="align-items:center;">
+        <div class="form-row skills-row" style="align-items:center;">
           <div style="display:flex;align-items:center;gap:8px;">
             <div class="label" id="skillsLabel">必要技能</div>
             <!-- 全部勾選/取消按鈕（顯示於欄位右側） -->
