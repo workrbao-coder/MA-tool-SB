@@ -18,7 +18,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.8';
+  const APP_VERSION = 'v2.8.9';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -398,6 +398,10 @@ textarea{min-height:50px;resize:vertical;}
   width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-right:8px;border:2px solid var(--brand-blue);color:var(--brand-blue);background:transparent;cursor:pointer;font-weight:700;font-size:12px;
 }
 .ability-btn.active{background:var(--brand-blue);color:#fff;}
+.optional-skills{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.optional-title{font-size:12px;color:var(--gray);white-space:nowrap;margin-right:2px;}
+.optional-skill{display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border:1px solid #e6e6e6;border-radius:6px;background:#fff;font-size:12px;white-space:nowrap;}
+.optional-skill input{width:14px;height:14px;margin:0;}
 
 @media(max-width:640px){
   #skillBlockCore.style-block{padding:5px;gap:4px;}
@@ -406,6 +410,9 @@ textarea{min-height:50px;resize:vertical;}
   #skillBlockCore .skill-buttons{gap:3px;row-gap:3px;}
   #skillBlockCore .skill-row{gap:2px;}
   #skillBlockCore .skill-buttons button{width:14px;height:14px;line-height:14px;font-size:8px;border-radius:3px;}
+  .optional-skills{gap:4px;margin-top:6px;}
+  .optional-skill{font-size:10px;padding:3px 5px;gap:3px;}
+  .optional-skill input{width:12px;height:12px;}
 }
 
 #toggleLevel1MobileBtn{display:none;}
@@ -414,7 +421,7 @@ textarea{min-height:50px;resize:vertical;}
 <body>
 <div class="header">
   <img class="logo" src="./MA-icon.png" alt="MA">
-  <div class="title">評語產生器(SB)<span class="version">v2.8.8　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <div class="title">評語產生器(SB)<span class="version">v2.8.9　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">
@@ -446,6 +453,7 @@ textarea{min-height:50px;resize:vertical;}
               <option value="5">等級5</option>
               <option value="6">等級6</option>
               <option value="7">等級7</option>
+              <option value="8">等級8</option>
             </select>
 
             <div class="label">　　評級</div>
@@ -574,7 +582,8 @@ textarea{min-height:50px;resize:vertical;}
             
              <!-- 核心技能（等級 7 顯示） -->
              <div id="coreSkills" aria-hidden="true">
-               <div class="style-block" id="skillBlockCore"></div>
+              <div class="style-block" id="skillBlockCore"></div>
+              <div id="optionalSkillBlock" class="optional-skills" style="display:none;"></div>
                <!-- 恢復預設按鈕：核心技能設為 I，聯絡道設為 X -->
                <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
                  <button id="restoreCoreDefaultsBtn" class="btn ghost" type="button" style="padding:6px 8px;font-size:12px;">恢復預設</button>
@@ -625,6 +634,7 @@ textarea{min-height:50px;resize:vertical;}
           <option value="5">等級5</option>
           <option value="6">等級6</option>
           <option value="7">等級7</option>
+          <option value="8">等級8</option>
         </select>
       </div>
       <div class="form-row">
@@ -669,6 +679,7 @@ textarea{min-height:50px;resize:vertical;}
           <option value="5">等級5</option>
           <option value="6">等級6</option>
           <option value="7">等級7</option>
+          <option value="8">等級8</option>
         </select>
       </div>
 
@@ -709,6 +720,7 @@ textarea{min-height:50px;resize:vertical;}
           <option value="5">等級5</option>
           <option value="6">等級6</option>
           <option value="7">等級7</option>
+          <option value="8">等級8</option>
         </select>
       </div>
 
@@ -882,7 +894,8 @@ const defaultDegreeOptions = {
         "可離桿S，做較開放式彎形，可在20-30秒完成6個彎，不穩定，建議在中階熟練。",
         "可離桿S，做較開放式彎形，可在20-30秒完成6個彎，穩定，建議去高階。"*/
       ],
-  "7":["H2T可提換","可離桿提換S","大中小彎 可跟滑","可團身離桿","大中小彎、團身可跟滑","皆可跟滑"]
+  "7":["H2T可提換","可離桿提換S","大中小彎 可跟滑","可團身離桿","大中小彎、團身可跟滑","皆可跟滑"],
+  "8":["H2T可提換","可離桿提換S","大中小彎 可跟滑","可團身離桿","大中小彎、團身可跟滑","皆可跟滑"]
 };
 
 // ---------- 合併的程度 + 能力 預設（可直接在程式碼中編輯）
@@ -1285,18 +1298,29 @@ if(document.getElementById('degreeSelect')){
 function updateDegreeRequiredState(lvl){
   const degreeSelect = document.getElementById('degreeSelect');
   const degreeLabel = degreeSelect ? degreeSelect.previousElementSibling : null;
+  const abilitySelect = document.getElementById('levelState');
+  const abilityLabel = abilitySelect ? abilitySelect.previousElementSibling : null;
   const note = document.querySelector('.note-required');
-  const degreeRequired = lvl !== '7';
+  const degreeRequired = !['7','8'].includes(lvl);
+  const abilityRequired = !['7','8'].includes(lvl);
   if(degreeSelect){
     degreeSelect.required = degreeRequired;
     degreeSelect.setAttribute('aria-required', degreeRequired ? 'true' : 'false');
-    degreeSelect.title = degreeRequired ? '必填：請選擇程度' : '等級7程度可不填';
+    degreeSelect.title = degreeRequired ? '必填：請選擇程度' : `等級${lvl || ''}程度可不填`;
+  }
+  if(abilitySelect){
+    abilitySelect.required = abilityRequired;
+    abilitySelect.setAttribute('aria-required', abilityRequired ? 'true' : 'false');
+    abilitySelect.title = abilityRequired ? '必填：請選擇能力' : `等級${lvl || ''}能力可不填`;
+  }
+  if(abilityLabel && abilityLabel.classList && abilityLabel.classList.contains('label')){
+    abilityLabel.classList.toggle('required', abilityRequired);
   }
   if(degreeLabel && degreeLabel.classList && degreeLabel.classList.contains('label')){
     degreeLabel.classList.toggle('required', degreeRequired);
   }
   if(note){
-    note.textContent = degreeRequired ? '＊為必填項：等級、能力、程度' : '＊為必填項：等級、能力（等級7程度可不填）';
+    note.textContent = (degreeRequired && abilityRequired) ? '＊為必填項：等級、能力、程度' : '＊為必填項：等級';
   }
 }
 
@@ -1338,12 +1362,13 @@ function toggleSkillsDisplay(){
     core.style.display = 'none';
     if(btnAll) btnAll.style.display = ''; // 顯示按鈕
     if(btnMobileAll) btnMobileAll.style.display = 'none';
-  } else if(lvl === '7'){
+  } else if(['7','8'].includes(lvl)){
     lbl.textContent = '核心技能';
     lbl.style.display = 'block';
     req.style.display = 'none';
     core.style.display = 'block';
-    if(btnAll) btnAll.style.display = 'none'; // 等級7 隱藏清除按鈕
+    if(typeof renderCoreSkillsForLevel === 'function') renderCoreSkillsForLevel(lvl);
+    if(btnAll) btnAll.style.display = 'none'; // 等級7-8 隱藏清除按鈕
     if(btnMobileAll) btnMobileAll.style.display = 'none';
   } else {
     lbl.style.display = 'none';
@@ -1858,8 +1883,14 @@ window.addEventListener('load', ()=>{
         e.preventDefault();
         const cols = document.querySelectorAll('#skillBlockCore .skill-col');
         if(!cols || cols.length === 0) return;
-        const arr = Array.from(cols).map((_, i)=> i === cols.length - 1 ? 'X' : 'I');
-        applyCoreStateArray(arr);
+        const lvl = $('level') ? $('level').value : '7';
+        const config = getCoreConfig(lvl);
+        applyCoreStateArray(config.defaultValues, lvl);
+        if(lvl === '8'){
+          localStorage.removeItem(getOptionalSkillStorageKey(lvl));
+          renderOptionalSkillsForLevel(lvl);
+          try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+        }
         showToast('核心技能已恢復預設');
       });
     }
@@ -1876,7 +1907,7 @@ window.addEventListener('load', ()=>{
 });
 
 // ---------- generate remark output (遵循等級規則) ----------
-// 規則：1-4 包含必要技能；5-6 不包含必要技能；7 包含核心技能（不包含必要技能）
+// 規則：1-4 包含必要技能；5-6 不包含必要技能；7-8 包含核心技能（不包含必要技能）
 function generatePreview(){
   const level = $('level') ? $('level').value.trim() : '';
   const rating = $('rating') ? $('rating').value.trim() : '';
@@ -1894,23 +1925,27 @@ function generatePreview(){
   // sanitize ability display：若 levelState 內誤帶數字，移除前導數字以避免產生 "2中" 型式
   let state = (levelStateRaw || '').replace(/^\d+/, '');
 
-  const isLevel7 = level === '7';
-  if(!level || !state || (!isLevel7 && !degree)){
+  const isCoreLevel = ['7','8'].includes(level);
+  const requiresAbility = !isCoreLevel;
+  const requiresDegree = !isCoreLevel;
+  if(!level || (requiresAbility && !state) || (requiresDegree && !degree)){
     // 不彈出 alert 造成打斷，自動觸發情境僅更新 preview 為提示文字
-    $('preview').textContent = isLevel7 ? '請選擇 等級 與 能力（為必填項）' : '請選擇 等級、能力 與 程度（為必填項）';
+    $('preview').textContent = isCoreLevel ? '請選擇 等級（為必填項）' : '請選擇 等級、能力 與 程度（為必填項）';
     return;
   }
 
   const includeRequired = ['1','2','3','4','5','6'].includes(level);
-  const includeCore = level === '7';
+  const includeCore = isCoreLevel;
 
   // 準備 coreParts（不論是否包含，都讀取目前選項以便 UI 顯示/儲存）
-  const coreShort = ["開","提","小","團","團小","聯絡"];
+  const coreConfig = getCoreConfig(level);
+  const coreShort = coreConfig.shortNames || [];
   const corePartsAll = [];
   document.querySelectorAll('#skillBlockCore .skill-col').forEach((col,i)=>{
     const a = col.querySelector('button.active');
     if(a) corePartsAll.push(coreShort[i] + a.textContent);
   });
+  const optionalParts = getSelectedOptionalSkills(level).map(name=>`${name}✔`);
 
   // 準備 required remark texts（僅當 includeRequired 為 true 才使用）
   let remarkElems = [];
@@ -1948,21 +1983,25 @@ function generatePreview(){
 
   const parts = [];
   // 將能力顯示改為包含等級數字（例如：2中），並在後面接上反腳資訊
-  let abilityDisplay = `${level}${state}`;
-  
-  // 處理反腳顯示：若勾選且有進度則顯示「反腳{進度}」，否則只顯示「反腳」
-  if(reverseFootChecked){
-    if(reverseFootProgress){
-      abilityDisplay += `，反腳${reverseFootProgress}`;
-    } else {
-      abilityDisplay += '，反腳';
+  if(level !== '8' && state){
+    let abilityDisplay = `${level}${state}`;
+
+    // 處理反腳顯示：若勾選且有進度則顯示「反腳{進度}」，否則只顯示「反腳」
+    if(reverseFootChecked){
+      if(reverseFootProgress){
+        abilityDisplay += `，反腳${reverseFootProgress}`;
+      } else {
+        abilityDisplay += '，反腳';
+      }
     }
-  }
-  
-  if(rating && rating !== '未評級'){
-    parts.push(`${rating}，${abilityDisplay}`);
-  } else {
-    parts.push(abilityDisplay);
+
+    if(rating && rating !== '未評級'){
+      parts.push(`${rating}，${abilityDisplay}`);
+    } else {
+      parts.push(abilityDisplay);
+    }
+  } else if(level !== '8' && rating && rating !== '未評級'){
+    parts.push(rating);
   }
   if(type) parts.push(type);
   if(char) parts.push(char);
@@ -1974,8 +2013,11 @@ function generatePreview(){
 
   let corePrefix = '';
   if(includeCore && corePartsAll.length){
-    // 等級7 的核心技能以頓號（、）作為間隔
+    // 等級7-8 的核心技能以頓號（、）作為間隔；等級8 選修技能接在句號後。
     corePrefix = corePartsAll.join('、');
+    if(optionalParts.length){
+      corePrefix += `。${optionalParts.join('、')}`;
+    }
   }
   let body = parts.join(' ///');
   if(remarkTexts.length) body += ' ///' + remarkTexts.join(' ');
@@ -2120,24 +2162,106 @@ function showCopyCheck(){ const chk = $('copyCheck'); if(!chk) return; chk.style
 function showToast(msg){ const t = $('toast'); if(!t) return; t.textContent = msg; t.classList.add('show'); setTimeout(()=> t.classList.remove('show'), 1000); }
 $('copyBtn').onclick = ()=>{ const text = $('preview').textContent || ''; navigator.clipboard.writeText(text).then(()=>{ showCopyCheck(); showToast('已複製'); }).catch(()=>{ alert('複製失敗'); }); };
 
-/* ---------- 核心技能（等級7）面板 初始化：兩列排列 I/IA 與 A/AC/C，儲存/載入狀態 ---------- */
-(function initCoreSkills(){
-  const skillNames = ["開放站姿","提早換刃","小轉","團身","團身小轉","聯絡道"];
-  const shortNames = ["開","提","小","團","團小","聯絡"];
-  const defaultCoreValues = ["I","I","I","I","I","X"];
-  const coreOptions = [
-    ["I","IA","A","AC","C"],
-    ["I","IA","A","AC","C"],
-    ["I","IA","A","AC","C"],
-    ["I","IA","A","AC","C"],
-    ["I","IA","A","AC","C"],
-    ["O","X"]
-  ];
+const CORE_SKILL_CONFIGS = {
+  "7": {
+    skillNames: ["開放站姿","提早換刃","小轉","團身","團身小轉","聯絡道"],
+    shortNames: ["開","提","小","團","團小","聯絡"],
+    defaultValues: ["I","I","I","I","I","X"],
+    options: [
+      ["I","IA","A","AC","C"],
+      ["I","IA","A","AC","C"],
+      ["I","IA","A","AC","C"],
+      ["I","IA","A","AC","C"],
+      ["I","IA","A","AC","C"],
+      ["O","X"]
+    ]
+  },
+  "8": {
+    skillNames: ["縱","刻","混壓","結構"],
+    shortNames: ["縱","刻","混壓","結構"],
+    defaultValues: ["I","I","I","I"],
+    options: [
+      ["I","IA","A","AC","C"],
+      ["I","IA","A","AC","C"],
+      ["I","IA","A","AC","C"],
+      ["I","IA","A","AC","C"]
+    ]
+  }
+};
+const LEVEL8_OPTIONAL_SKILLS = ["轉1","轉3","奶轉1","奶轉3","豚跳","H1","H跳"];
+
+function getCoreConfig(level){
+  return CORE_SKILL_CONFIGS[level] || CORE_SKILL_CONFIGS["7"];
+}
+function getCoreStorageKey(level){
+  return level === '8' ? 'coreSkillState_v1_level8' : 'coreSkillState_v1';
+}
+function getOptionalSkillStorageKey(level){
+  return level === '8' ? 'optionalSkillState_v1_level8' : '';
+}
+function saveCoreSkillStateForLevel(level){
   const container = document.getElementById('skillBlockCore');
   if(!container) return;
+  const state = {};
+  container.querySelectorAll('.skill-col').forEach((col,i)=>{
+    const sel = col.querySelector('button.active');
+    state[i] = sel ? sel.textContent : '';
+  });
+  localStorage.setItem(getCoreStorageKey(level), JSON.stringify(state));
+}
+
+function getSelectedOptionalSkills(level){
+  if(level !== '8') return [];
+  return Array.from(document.querySelectorAll('#optionalSkillBlock input[type="checkbox"]:checked')).map(input=>input.value);
+}
+
+function renderOptionalSkillsForLevel(level){
+  const block = document.getElementById('optionalSkillBlock');
+  if(!block) return;
+  block.innerHTML = '';
+  if(level !== '8'){
+    block.style.display = 'none';
+    return;
+  }
+  block.style.display = 'flex';
+  const title = document.createElement('div');
+  title.className = 'optional-title';
+  title.textContent = '選修技能';
+  block.appendChild(title);
+  let saved = {};
+  try{ saved = JSON.parse(localStorage.getItem(getOptionalSkillStorageKey(level)) || '{}'); }catch(e){ saved = {}; }
+  LEVEL8_OPTIONAL_SKILLS.forEach(name=>{
+    const label = document.createElement('label');
+    label.className = 'optional-skill';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = name;
+    input.checked = !!saved[name];
+    input.addEventListener('change', ()=>{
+      const next = {};
+      document.querySelectorAll('#optionalSkillBlock input[type="checkbox"]').forEach(chk=>{ next[chk.value] = !!chk.checked; });
+      localStorage.setItem(getOptionalSkillStorageKey(level), JSON.stringify(next));
+      try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+    });
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(name));
+    block.appendChild(label);
+  });
+}
+
+/* ---------- 核心技能（等級7/8）面板 初始化：兩列排列 I/IA 與 A/AC/C，儲存/載入狀態 ---------- */
+function renderCoreSkillsForLevel(level){
+  const container = document.getElementById('skillBlockCore');
+  if(!container) return;
+  const config = getCoreConfig(level);
+  if(container.dataset.level === level && container.children.length){
+    renderOptionalSkillsForLevel(level);
+    return;
+  }
 
   container.innerHTML = '';
-  skillNames.forEach((name,i)=>{
+  container.dataset.level = level;
+  config.skillNames.forEach((name,i)=>{
     const col = document.createElement('div');
     col.className = 'skill-col';
     col.innerHTML = `<div class="skill-name">${name}</div>`;
@@ -2145,7 +2269,7 @@ $('copyBtn').onclick = ()=>{ const text = $('preview').textContent || ''; naviga
     btnGroup.className = 'skill-buttons';
     const row1 = document.createElement('div'); row1.className = 'skill-row';
     const row2 = document.createElement('div'); row2.className = 'skill-row';
-    const levels = coreOptions[i] || coreOptions[0];
+    const levels = config.options[i] || config.options[0];
     const splitIndex = levels.length <= 2 ? levels.length : 2;
     levels.forEach((lv, idx)=>{
 
@@ -2157,12 +2281,7 @@ $('copyBtn').onclick = ()=>{ const text = $('preview').textContent || ''; naviga
         col.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
         btn.classList.add('active');
         // 變更時也立即儲存到 localStorage
-        const st = {};
-        container.querySelectorAll('.skill-col').forEach((c,j)=>{
-          const s = c.querySelector('button.active');
-          st[j] = s ? s.textContent : '';
-        });
-        localStorage.setItem('coreSkillState_v1', JSON.stringify(st));
+        saveCoreSkillStateForLevel(level);
         // 立即更新預覽（自動產生）
         try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
       };
@@ -2178,9 +2297,9 @@ $('copyBtn').onclick = ()=>{ const text = $('preview').textContent || ''; naviga
   // load state
   let saved = {};
   try{
-    saved = JSON.parse(localStorage.getItem('coreSkillState_v1') || '{}');
+    saved = JSON.parse(localStorage.getItem(getCoreStorageKey(level)) || '{}');
   }catch(e){
-    console.warn('coreSkillState_v1 parse failed', e);
+    console.warn('core skill state parse failed', e);
   }
   const arr = [];
   container.querySelectorAll('.skill-col').forEach((col,i)=>{
@@ -2188,7 +2307,8 @@ $('copyBtn').onclick = ()=>{ const text = $('preview').textContent || ''; naviga
   });
   // 若 localStorage 無值，預設為 I（第一個）
   const hasAny = arr.some(v=>v && v.length);
-  applyCoreStateArray(hasAny ? arr : defaultCoreValues);
+  applyCoreStateArray(hasAny ? arr : config.defaultValues, level);
+  renderOptionalSkillsForLevel(level);
 
   // 移除舊有「產生核心技能摘要」按鈕與 coreOutput（若存在），因為你要刪掉這些 UI
   const genCoreBtn = document.getElementById('generateCore');
@@ -2196,28 +2316,29 @@ $('copyBtn').onclick = ()=>{ const text = $('preview').textContent || ''; naviga
   const coreOutEl = document.getElementById('coreOutput');
   if(coreOutEl) coreOutEl.remove();
 
+}
+
+(function initCoreSkills(){
+  renderCoreSkillsForLevel(($('level') && $('level').value) || '7');
 })();
 
 /* ---------- 共用：套用核心技能狀態陣列並儲存 ---------- */
-function applyCoreStateArray(arr){
+function applyCoreStateArray(arr, level){
   const cols = document.querySelectorAll('#skillBlockCore .skill-col');
   if(!cols || cols.length === 0) return;
+  const activeLevel = level || (document.getElementById('skillBlockCore') ? document.getElementById('skillBlockCore').dataset.level : '') || (($('level') && $('level').value) || '7');
+  const config = getCoreConfig(activeLevel);
   cols.forEach((col,i)=>{
     const btns = Array.from(col.querySelectorAll('button'));
     btns.forEach(b=>b.classList.remove('active'));
-    // 依傳入值找按鈕，若無則預設核心技能為 I，聯絡道為 X。
-    const fallback = i === cols.length - 1 ? 'X' : 'I';
+    // 依傳入值找按鈕，若無則使用該等級預設值。
+    const fallback = (config.defaultValues && config.defaultValues[i]) || 'I';
     const want = arr && typeof arr[i] === 'string' && arr[i] ? arr[i] : fallback;
     const target = btns.find(b=>b.textContent === want) || btns[0];
     if(target) target.classList.add('active');
   });
   // 儲存到 localStorage（與原本 saveCoreState 行為一致）
-  const state = {};
-  document.querySelectorAll('#skillBlockCore .skill-col').forEach((col,i)=>{
-    const sel = col.querySelector('button.active');
-    state[i] = sel ? sel.textContent : '';
-  });
-  localStorage.setItem('coreSkillState_v1', JSON.stringify(state));
+  saveCoreSkillStateForLevel(activeLevel);
   // 變更核心技能狀態時立即更新評語預覽
   try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
 }
