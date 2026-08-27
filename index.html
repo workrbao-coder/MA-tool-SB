@@ -18,7 +18,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.9';
+  const APP_VERSION = 'v2.8.10';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -285,11 +285,20 @@ textarea{min-height:50px;resize:vertical;}
   .top-fields #levelState{grid-column:3;grid-row:2;}
   .top-fields .select{font-size:12px;padding:6px 5px;}
   .top-fields #reverseFootWrap{grid-column:1 / -1;grid-row:3;margin-top:2px;}
+  .top-fields.hide-ability:not(.hide-rating){grid-template-columns:repeat(2,minmax(0,1fr));}
+  .top-fields.hide-ability:not(.hide-rating) > .label:nth-child(3){grid-column:2;grid-row:1;}
+  .top-fields.hide-ability:not(.hide-rating) #rating{grid-column:2;grid-row:2;}
+  .top-fields.hide-rating.hide-ability{grid-template-columns:1fr;}
+  .top-fields.hide-rating.hide-ability > .label:nth-child(1){grid-column:1;grid-row:1;}
+  .top-fields.hide-rating.hide-ability #level{grid-column:1;grid-row:2;}
   .degree-fields{grid-template-columns:repeat(2,minmax(0,1fr));}
   .degree-fields > .label:nth-child(1){grid-column:1;grid-row:1;}
   .degree-fields > .label:nth-child(3){grid-column:2;grid-row:1;}
   .degree-fields #degreeSelect{grid-column:1;grid-row:2;}
   .degree-fields #character{grid-column:2;grid-row:2;}
+  .degree-fields.hide-degree{grid-template-columns:1fr;}
+  .degree-fields.hide-degree > .label:nth-child(3){grid-column:1;grid-row:1;}
+  .degree-fields.hide-degree #character{grid-column:1;grid-row:2;}
   .degree-fields .select{font-size:12px;padding:6px 5px;}
   .select,textarea,input[type="text"]{font-size:13px;padding:7px 8px;border-radius:9px;min-width:0;}
   textarea{min-height:34px;}
@@ -421,7 +430,7 @@ textarea{min-height:50px;resize:vertical;}
 <body>
 <div class="header">
   <img class="logo" src="./MA-icon.png" alt="MA">
-  <div class="title">評語產生器(SB)<span class="version">v2.8.9　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <div class="title">評語產生器(SB)<span class="version">v2.8.10　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">
@@ -456,7 +465,7 @@ textarea{min-height:50px;resize:vertical;}
               <option value="8">等級8</option>
             </select>
 
-            <div class="label">　　評級</div>
+            <div id="ratingLabel" class="label">　　評級</div>
             <select id="rating" class="select small" title="選擇評級">
               <option>未評級</option>
               <option>評級未過</option>
@@ -466,7 +475,7 @@ textarea{min-height:50px;resize:vertical;}
               <option>複習</option>
             </select>
 
-            <div class="label required">　能力</div>
+            <div id="abilityLabel" class="label required">　能力</div>
             <select id="levelState" class="select small" required aria-required="true" title="必填：請選擇能力">
               <option value="">請選擇</option>
               <option>初</option>
@@ -478,7 +487,7 @@ textarea{min-height:50px;resize:vertical;}
 
           <!-- 第二列：程度（與類型、特質同列） -->
           <div class="form-row degree-fields" style="width:100%;margin-bottom:8px;align-items:center;">
-            <div class="label required">程度</div>
+            <div id="degreeLabel" class="label required">程度</div>
             <select id="degreeSelect" class="select" required aria-required="true" title="必填：請選擇程度" style="width:260px;margin-left:0;">
               <option value="">請先選擇等級</option>
             </select>
@@ -1297,12 +1306,36 @@ if(document.getElementById('degreeSelect')){
 
 function updateDegreeRequiredState(lvl){
   const degreeSelect = document.getElementById('degreeSelect');
-  const degreeLabel = degreeSelect ? degreeSelect.previousElementSibling : null;
+  const degreeLabel = document.getElementById('degreeLabel');
+  const ratingSelect = document.getElementById('rating');
+  const ratingLabel = document.getElementById('ratingLabel');
   const abilitySelect = document.getElementById('levelState');
-  const abilityLabel = abilitySelect ? abilitySelect.previousElementSibling : null;
+  const abilityLabel = document.getElementById('abilityLabel');
+  const topFields = document.querySelector('.top-fields');
+  const degreeFields = document.querySelector('.degree-fields');
   const note = document.querySelector('.note-required');
+  const hideRating = lvl === '8';
+  const hideAbility = ['7','8'].includes(lvl);
+  const hideDegree = ['7','8'].includes(lvl);
   const degreeRequired = !['7','8'].includes(lvl);
   const abilityRequired = !['7','8'].includes(lvl);
+  const setFieldVisible = (label, field, visible)=>{
+    if(label) label.style.display = visible ? '' : 'none';
+    if(field){
+      field.style.display = visible ? '' : 'none';
+      field.disabled = !visible;
+    }
+  };
+  if(topFields){
+    topFields.classList.toggle('hide-rating', hideRating);
+    topFields.classList.toggle('hide-ability', hideAbility);
+  }
+  if(degreeFields){
+    degreeFields.classList.toggle('hide-degree', hideDegree);
+  }
+  setFieldVisible(ratingLabel, ratingSelect, !hideRating);
+  setFieldVisible(abilityLabel, abilitySelect, !hideAbility);
+  setFieldVisible(degreeLabel, degreeSelect, !hideDegree);
   if(degreeSelect){
     degreeSelect.required = degreeRequired;
     degreeSelect.setAttribute('aria-required', degreeRequired ? 'true' : 'false');
@@ -1983,7 +2016,7 @@ function generatePreview(){
 
   const parts = [];
   // 將能力顯示改為包含等級數字（例如：2中），並在後面接上反腳資訊
-  if(level !== '8' && state){
+  if(!isCoreLevel && state){
     let abilityDisplay = `${level}${state}`;
 
     // 處理反腳顯示：若勾選且有進度則顯示「反腳{進度}」，否則只顯示「反腳」
@@ -2000,12 +2033,15 @@ function generatePreview(){
     } else {
       parts.push(abilityDisplay);
     }
-  } else if(level !== '8' && rating && rating !== '未評級'){
+  } else if(level === '7' && rating && rating !== '未評級'){
     parts.push(rating);
+  }
+  if(level === '7' && reverseFootChecked){
+    parts.push(reverseFootProgress ? `反腳${reverseFootProgress}` : '反腳');
   }
   if(type) parts.push(type);
   if(char) parts.push(char);
-  if(degree) parts.push(`程度：${degree}`);
+  if(!isCoreLevel && degree) parts.push(`程度：${degree}`);
   // 將其他備註放在需加強之前
   if(otherNotes) parts.push(otherNotes);
   if(need) parts.push(`需加強：${need}`);
