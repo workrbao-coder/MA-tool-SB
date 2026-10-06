@@ -18,7 +18,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.12';
+  const APP_VERSION = 'v2.8.13';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -430,7 +430,7 @@ textarea{min-height:50px;resize:vertical;}
 <body>
 <div class="header">
   <img class="logo" src="./MA-icon.png" alt="MA">
-  <div class="title">評語產生器(SB)<span class="version">v2.8.12　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <div class="title">評語產生器(SB)<span class="version">v2.8.13　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">
@@ -2418,10 +2418,21 @@ function loadPracticeList(){
       input.focus();
       input.select();
 
+      let emptyAlertOpen = false;
       const cancel = ()=>{ if(li.contains(input)) li.replaceChild(span, input); };
+      const rejectEmpty = (restoreOriginal)=>{
+        if(emptyAlertOpen) return;
+        emptyAlertOpen = true;
+        if(restoreOriginal) cancel();
+        alert('內容不可為空');
+        setTimeout(()=>{
+          emptyAlertOpen = false;
+          if(!restoreOriginal && li.contains(input)) input.focus();
+        }, 0);
+      };
       const save = ()=>{
         const v = input.value.trim();
-        if(v === ''){ alert('內容不可為空'); input.focus(); return; }
+        if(v === ''){ rejectEmpty(false); return; }
         const cur = getPracticeTemplates() || {};
         cur[lvl] = cur[lvl] || [];
         cur[lvl][idx] = v;
@@ -2431,7 +2442,12 @@ function loadPracticeList(){
       };
 
       input.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); save(); } else if(e.key === 'Escape'){ e.preventDefault(); cancel(); } });
-      input.addEventListener('blur', ()=>{ if(input.value.trim() === txt) cancel(); else save(); });
+      input.addEventListener('blur', ()=>{
+        const v = input.value.trim();
+        if(v === txt) cancel();
+        else if(v === '') rejectEmpty(true);
+        else save();
+      });
     });
 
     const del = document.createElement('button');
@@ -2543,10 +2559,21 @@ function loadNeedList(){
       const input = document.createElement('input'); input.type='text'; input.value = txt;
       input.style.width='100%'; input.style.padding='6px'; input.style.borderRadius='6px'; input.style.border='1px solid #ccc';
       li.replaceChild(input, span); input.focus(); input.select();
+      let emptyAlertOpen = false;
       const cancel = ()=>{ if(li.contains(input)) li.replaceChild(span, input); };
+      const rejectEmpty = (restoreOriginal)=>{
+        if(emptyAlertOpen) return;
+        emptyAlertOpen = true;
+        if(restoreOriginal) cancel();
+        alert('內容不可為空');
+        setTimeout(()=>{
+          emptyAlertOpen = false;
+          if(!restoreOriginal && li.contains(input)) input.focus();
+        }, 0);
+      };
       const save = ()=>{
         const v = input.value.trim();
-        if(!v){ alert('內容不可為空'); input.focus(); return; }
+        if(!v){ rejectEmpty(false); return; }
         const cur = getNeedTemplates() || {};
         cur[lvl] = cur[lvl] || [];
         cur[lvl][idx] = v;
@@ -2555,7 +2582,12 @@ function loadNeedList(){
         renderNeedQuickButtons();
       };
       input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); save(); } else if(e.key==='Escape'){ e.preventDefault(); cancel(); } });
-      input.addEventListener('blur', ()=>{ if(input.value.trim() === txt) cancel(); else save(); });
+      input.addEventListener('blur', ()=>{
+        const v = input.value.trim();
+        if(v === txt) cancel();
+        else if(!v) rejectEmpty(true);
+        else save();
+      });
     });
     const del = document.createElement('button');
     del.textContent = '✕';
