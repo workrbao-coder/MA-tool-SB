@@ -18,7 +18,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.11';
+  const APP_VERSION = 'v2.8.12';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -430,7 +430,7 @@ textarea{min-height:50px;resize:vertical;}
 <body>
 <div class="header">
   <img class="logo" src="./MA-icon.png" alt="MA">
-  <div class="title">評語產生器(SB)<span class="version">v2.8.11　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <div class="title">評語產生器(SB)<span class="version">v2.8.12　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">
@@ -2705,6 +2705,9 @@ function renderPracticeQuickButtons(){
 
 // ---------- 補：當 編輯「加強內容」的等級改變時更新列表 ----------
 if($('editNeedLevel')) $('editNeedLevel').addEventListener('change', loadNeedList);
+
+// 切換「建議練習編輯」等級時，立即顯示該等級的現有項目。
+if($('editPracticeLevel')) $('editPracticeLevel').addEventListener('change', loadPracticeList);
 
 // ---------- 補：當 generator 的等級改變時，同步更新兩組快速按鈕（分開呼叫，避免衝突） ----------
 if($('level')) {
