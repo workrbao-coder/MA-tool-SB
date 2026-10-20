@@ -4,9 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#0b4aa2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="MA評語SB">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-192.png">
   <title>MA 手機快速評語範例</title>
   <style>
     html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#eef1f4;}
+    body{position:fixed;left:0;top:var(--viewport-top,0px);height:var(--viewport-height,100dvh);box-sizing:border-box;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
     #prototypeFrame{display:block;width:100%;height:100%;border:0;background:#eef1f4;}
     #loadMessage{position:fixed;inset:0;display:grid;place-items:center;color:#394150;font:600 15px system-ui,sans-serif;}
   </style>
@@ -18,6 +24,17 @@
   (()=>{
     const frame = document.getElementById('prototypeFrame');
     const loadMessage = document.getElementById('loadMessage');
+    function syncViewport(){
+      const viewport = window.visualViewport;
+      document.documentElement.style.setProperty('--viewport-height', `${viewport ? viewport.height : window.innerHeight}px`);
+      document.documentElement.style.setProperty('--viewport-top', `${viewport ? viewport.offsetTop : 0}px`);
+    }
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    if(window.visualViewport){
+      window.visualViewport.addEventListener('resize', syncViewport);
+      window.visualViewport.addEventListener('scroll', syncViewport);
+    }
 
     frame.addEventListener('load', ()=>{
       const appWindow = frame.contentWindow;
@@ -32,7 +49,9 @@
       style.textContent = `
         :root{--prototype-ink:#17202d;--prototype-blue:#0b4aa2;--prototype-cyan:#087f8c;--prototype-coral:#c94f45;--prototype-line:#d9dee6;--prototype-bg:#eef1f4;}
         html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;background:var(--prototype-bg)!important;}
-        body{padding:10px 0 calc(96px + env(safe-area-inset-bottom))!important;color:var(--prototype-ink)!important;}
+        html,body{height:100%!important;min-height:0!important;overflow:hidden!important;}
+        body{display:flex!important;flex-direction:column!important;padding:0!important;color:var(--prototype-ink)!important;}
+        .prototype-scroll{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;padding:10px 0 16px;overscroll-behavior-y:contain;}
         .header{width:min(100% - 24px,440px)!important;margin:0 auto 8px!important;padding:0!important;gap:8px!important;}
         .header .logo{width:30px!important;height:30px!important;border-radius:6px!important;}
         .header .title{font-size:17px!important;line-height:1.2!important;gap:5px!important;}
@@ -51,6 +70,15 @@
         .prototype-choice-label{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:800;color:#4a5565;}
         .prototype-choice-label.required:after{content:'*';color:var(--prototype-coral);}
         .prototype-choice-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
+        .prototype-choice-grid.level-grid{grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;}
+        .level-grid .prototype-choice{padding:7px 0;font-size:14px;white-space:nowrap;}
+        .prototype-choice-section.prototype-collapsible{display:block;}
+        .prototype-collapsible>summary{list-style:none;min-height:42px;cursor:pointer;}
+        .prototype-collapsible>summary::-webkit-details-marker{display:none;}
+        .prototype-collapsible>summary:after{content:'+';margin-left:auto;font-size:18px;}
+        .prototype-collapsible[open]>summary:after{content:'−';}
+        .prototype-choice-value{margin-left:8px;font-size:12px;font-weight:500;color:#087f8c;}
+        .prototype-collapsible .prototype-choice-grid{margin-top:6px;}
         .prototype-choice-grid.compact-3{grid-template-columns:repeat(3,minmax(0,1fr));}
         .prototype-choice-grid.compact-5{grid-template-columns:repeat(5,minmax(0,1fr));}
         .prototype-choice-grid.rating-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -82,6 +110,7 @@
         .remark-table thead{display:none!important;}
         .remark-table tr{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important;width:100%!important;}
         .remark-table td{display:contents!important;}
+        .remark-table td[style*="display: none"],.remark-cell label[style*="display: none"]{display:none!important;}
         .remark-cell label{display:grid!important;grid-template-rows:auto 34px!important;justify-items:center!important;align-items:center!important;gap:4px!important;min-width:0!important;margin:0!important;padding:7px 2px!important;border:1px solid var(--prototype-line)!important;border-radius:7px!important;background:#fafbfd!important;white-space:normal!important;text-align:center!important;}
         .remark-cell .remark-name{order:1!important;font-size:11px!important;line-height:1.15!important;white-space:normal!important;}
         .remark-cell .remark-symbol{order:2!important;margin:0!important;transform:scale(1.35);}
@@ -96,16 +125,16 @@
         .optional-skill{min-height:38px;padding:5px 8px!important;border-radius:7px!important;font-size:12px!important;background:#f7f9fc!important;}
         .optional-skill input{width:18px!important;height:18px!important;accent-color:var(--prototype-blue);}
         .note-required{font-size:11px!important;margin-top:8px!important;color:#687386!important;}
-        .prototype-preview-card{position:fixed!important;left:50%!important;bottom:0!important;z-index:1000!important;width:min(calc(100% - 16px),448px)!important;transform:translateX(-50%)!important;margin:0!important;padding:0!important;border:1px solid #ccd5e1!important;border-bottom:0!important;border-radius:8px 8px 0 0!important;background:#fff!important;box-shadow:0 -5px 20px rgba(27,39,51,.14)!important;}
+        .prototype-preview-card{position:relative!important;flex:0 0 auto!important;align-self:center!important;width:min(calc(100% - 16px),448px)!important;max-height:65%!important;overflow-y:auto!important;margin:0!important;padding:0 0 8px!important;border:1px solid #ccd5e1!important;border-bottom:0!important;border-radius:8px 8px 0 0!important;background:#fff!important;box-shadow:0 -5px 20px rgba(27,39,51,.14)!important;}
         .prototype-preview-details>summary{list-style:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;min-height:54px;padding:8px 10px;cursor:pointer;}
         .prototype-preview-details>summary::-webkit-details-marker{display:none;}
         .prototype-preview-title{font-size:12px;font-weight:900;color:var(--prototype-blue);white-space:nowrap;}
         .prototype-preview-snippet{font-size:12px;color:#4b5565;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
         .prototype-preview-chevron{font-size:16px;color:#657187;}
         .prototype-preview-details[open] .prototype-preview-chevron{transform:rotate(180deg);}
-        .prototype-preview-body{padding:0 10px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--prototype-line);}
-        .prototype-preview-card .preview{min-height:62px!important;max-height:140px!important;overflow:auto!important;margin-top:8px!important;padding:9px!important;border-radius:7px!important;font-size:13px!important;line-height:1.45!important;}
-        .prototype-preview-card .preview-actions{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:6px!important;margin-top:8px!important;}
+        .prototype-preview-body{padding:0 10px 4px;border-top:1px solid var(--prototype-line);}
+        .prototype-preview-card .preview{min-height:40px!important;max-height:min(140px,20vh)!important;overflow:auto!important;margin-top:8px!important;padding:9px!important;border-radius:7px!important;font-size:13px!important;line-height:1.45!important;}
+        .prototype-preview-card .preview-actions{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;gap:6px!important;margin:0!important;padding:0 10px!important;}
         .prototype-preview-card .preview-actions>div{display:contents!important;}
         .prototype-preview-card .btn{width:100%!important;min-height:42px!important;padding:7px!important;border-radius:7px!important;font-size:12px!important;}
         .copy-check{display:none!important;}
@@ -133,11 +162,11 @@
       heading.after(basic);
 
       const choiceConfigs = [
-        {id:'level',label:'等級',required:true,grid:''},
+        {id:'level',label:'等級',required:true,grid:'level-grid'},
         {id:'rating',label:'評級',grid:'rating-grid'},
-        {id:'levelState',label:'能力',required:true,grid:'compact-3'},
+        {id:'levelState',label:'能力',required:true,grid:'compact-3',collapsible:true},
         {id:'degreeSelect',label:'程度',required:true,grid:'degree-grid'},
-        {id:'character',label:'特質',grid:'compact-5'}
+        {id:'character',label:'特質',grid:'compact-5',collapsible:true}
       ];
       const choiceSections = new Map();
 
@@ -154,12 +183,23 @@
         if(!select) return;
         let section = choiceSections.get(config.id);
         if(!section){
-          section = doc.createElement('section');
-          section.className = 'prototype-choice-section';
+          section = doc.createElement(config.collapsible ? 'details' : 'section');
+          section.className = `prototype-choice-section${config.collapsible ? ' prototype-collapsible' : ''}`;
           section.dataset.selectId = config.id;
-          const label = doc.createElement('div');
-          label.className = `prototype-choice-label${config.required ? ' required' : ''}`;
+          const label = doc.createElement(config.collapsible ? 'summary' : 'div');
+          label.className = `prototype-choice-label${config.required && !config.collapsible ? ' required' : ''}`;
           label.textContent = config.label;
+          if(config.collapsible){
+            if(config.required){
+              const required = doc.createElement('span');
+              required.textContent = '*';
+              required.style.color = 'var(--prototype-coral)';
+              label.appendChild(required);
+            }
+            const value = doc.createElement('span');
+            value.className = 'prototype-choice-value';
+            label.appendChild(value);
+          }
           const grid = doc.createElement('div');
           grid.className = `prototype-choice-grid ${config.grid || ''}`.trim();
           section.append(label, grid);
@@ -167,12 +207,15 @@
           choiceSections.set(config.id, section);
         }
         const grid = section.querySelector('.prototype-choice-grid');
+        const currentValue = section.querySelector('.prototype-choice-value');
+        if(currentValue) currentValue.textContent = select.value || '未選擇';
         const options = Array.from(select.options).filter(option=>option.value !== '');
         grid.replaceChildren(...options.map(option=>{
           const button = doc.createElement('button');
           button.type = 'button';
           button.className = `prototype-choice${select.value === option.value ? ' active' : ''}`;
-          button.textContent = option.textContent.trim();
+          button.textContent = config.id === 'level' ? option.value : option.textContent.trim();
+          if(config.id === 'level') button.setAttribute('aria-label', option.textContent.trim());
           button.dataset.value = option.value;
           button.setAttribute('aria-pressed', select.value === option.value ? 'true' : 'false');
           button.addEventListener('click', ()=>selectValue(select, option.value));
@@ -214,7 +257,7 @@
         return el ? el.closest('.form-row') : null;
       };
       const skillsDetails = wrapAccordion(doc.querySelector('.skills-row'), '技能評量', true);
-      const notesDetails = wrapAccordion(rowFor('otherNotes'), '其他備註', false);
+      const notesDetails = wrapAccordion(rowFor('otherNotes'), '其他備註', true);
       const needDetails = wrapAccordion(rowFor('needImprove'), '需加強', false);
       const practiceDetails = wrapAccordion(rowFor('practice'), '建議練習', false);
       [skillsDetails, notesDetails, needDetails, practiceDetails].forEach(details=>{
@@ -241,9 +284,16 @@
       previewSummary.append(previewTitle, previewSnippet, previewChevron);
       const previewBody = doc.createElement('div');
       previewBody.className = 'prototype-preview-body';
-      previewBody.append(preview, previewActions);
+      previewBody.append(preview);
       previewDetails.append(previewSummary, previewBody);
-      previewCard.replaceChildren(previewDetails);
+      previewCard.replaceChildren(previewDetails, previewActions);
+      const scroller = doc.createElement('main');
+      scroller.className = 'prototype-scroll';
+      const header = doc.querySelector('.header');
+      const container = doc.querySelector('.container');
+      doc.body.prepend(scroller);
+      scroller.append(header, container);
+      doc.body.appendChild(previewCard);
 
       const updatePreviewSnippet = ()=>{
         const text = (preview.textContent || '').trim();
@@ -261,6 +311,14 @@
           level: true
         };
         choiceSections.forEach((section,id)=>{ section.style.display = visible[id] ? '' : 'none'; });
+        if(skillsDetails){
+          skillsDetails.hidden = !level;
+          skillsDetails.querySelector('summary').textContent = ['7','8'].includes(level) ? '核心技能' : '必要技能';
+          if(skillsDetails.dataset.level !== level){
+            skillsDetails.open = !!level;
+            skillsDetails.dataset.level = level;
+          }
+        }
         const reverseSection = doc.getElementById('prototypeReverse');
         if(reverseSection) reverseSection.style.display = ['4','5','6','7'].includes(level) ? '' : 'none';
       }
