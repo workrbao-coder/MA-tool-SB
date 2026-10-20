@@ -275,6 +275,7 @@
 
       doc.addEventListener('change', ()=>appWindow.setTimeout(refreshAll,0), true);
       doc.addEventListener('input', ()=>appWindow.setTimeout(updatePreviewSnippet,0), true);
+      doc.addEventListener('rating-options-updated', ()=>appWindow.setTimeout(refreshAll,0));
       doc.addEventListener('click', event=>{
         if(event.target.closest('#toggleResetInputsBtn,#toggleResetRestoreBtn,#restoreCoreDefaultsBtn')){
           appWindow.setTimeout(refreshAll,0);

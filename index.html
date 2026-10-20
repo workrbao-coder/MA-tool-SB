@@ -18,7 +18,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.14';
+  const APP_VERSION = 'v2.8.15';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -430,7 +430,7 @@ textarea{min-height:50px;resize:vertical;}
 <body>
 <div class="header">
   <img class="logo" src="./MA-icon.png" alt="MA">
-  <div class="title">評語產生器(SB)<span class="version">v2.8.14　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <div class="title">評語產生器(SB)<span class="version">v2.8.15　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">
@@ -469,7 +469,8 @@ textarea{min-height:50px;resize:vertical;}
             <select id="rating" class="select small" title="選擇評級">
               <option>未評級</option>
               <option>評級未過</option>
-              <option>評級過關、未達跳標</option>
+              <option>接近過關標準</option>
+              <option>評級過關，未達跳標</option>
               <option>評級過關</option>
               <option>跳級過關</option>
               <option>複習</option>
@@ -964,6 +965,8 @@ function getDegreeOptions(){ return {...defaultDegreeOptions, ...getCustomOption
 function getAbilityMap(){ try{ const s = localStorage.getItem('degreeAbilityMap_v1'); return s ? JSON.parse(s) : {}; }catch(e){return {}; } }
 function saveAbilityMap(m){ try{ localStorage.setItem('degreeAbilityMap_v1', JSON.stringify(m)); }catch(e){}
 }
+function getDegreeRowMap(){ try{ const s = localStorage.getItem('degreeSourceRowMap_v1'); return s ? JSON.parse(s) : {}; }catch(e){ return {}; } }
+function saveDegreeRowMap(m){ try{ localStorage.setItem('degreeSourceRowMap_v1', JSON.stringify(m)); }catch(e){} }
 // Ensure ability map for level aligns with provided list (preserve existing mappings when possible)
 function ensureAbilityMapForLevel(lvl, list){ if(!lvl) return {}; const map = getAbilityMap(); map[lvl] = map[lvl] || {}; const prev = {...map[lvl]}; const ordered = {}; const cycle = ['初','中','高']; list.forEach((item, idx)=>{ if(prev[item]) ordered[item] = prev[item]; else ordered[item] = cycle[idx % cycle.length]; }); map[lvl] = ordered; saveAbilityMap(map); return map[lvl]; }
 function getAbilityFor(lvl, degree){ const m = getAbilityMap(); if(!m || !m[lvl]) return ''; return m[lvl][degree] || ''; }
@@ -1288,6 +1291,9 @@ $('editLevel').addEventListener('change', loadDegreeList);
 if(document.getElementById('levelState')){
   document.getElementById('levelState').addEventListener('change', ()=>{ loadDegreeOptions(); });
 }
+if(document.getElementById('rating')){
+  document.getElementById('rating').addEventListener('change', ()=>{ validateRatingDegreeCompatibility(true); });
+}
 // 選擇程度時，同步能力選單（若該詞條有對應能力）
 if(document.getElementById('degreeSelect')){
   document.getElementById('degreeSelect').addEventListener('change', ()=>{
@@ -1301,6 +1307,7 @@ if(document.getElementById('degreeSelect')){
         try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
       }
     }
+    validateRatingDegreeCompatibility(true);
   });
 }
 
@@ -1560,6 +1567,7 @@ function applySheetMappingsFromCSV(sheetCsvText){
 
   const result = {};
   const abilityMap = getAbilityMap();
+  const degreeRowMap = {};
   mappingRules.forEach(rule=>{
     const r = parseA1Range(rule.range);
     if(!r) return;
@@ -1571,6 +1579,8 @@ function applySheetMappingsFromCSV(sheetCsvText){
         result[rule.level].push({t: val, a: rule.ability});
         abilityMap[rule.level] = abilityMap[rule.level] || {};
         abilityMap[rule.level][val] = rule.ability;
+        degreeRowMap[rule.level] = degreeRowMap[rule.level] || {};
+        degreeRowMap[rule.level][val] = rr;
       }
     }
   });
@@ -1580,9 +1590,43 @@ function applySheetMappingsFromCSV(sheetCsvText){
   for(const lv in result){ custom[lv] = result[lv].map(x=>x.t); }
   saveCustomOptions(custom);
   saveAbilityMap(abilityMap);
+  saveDegreeRowMap(degreeRowMap);
   // reload UI
   loadDegreeList(); loadDegreeOptions();
   /*alert('已從 Google Sheet 同步完成（使用預設範圍規則）');*/
+}
+
+function applyRatingOptionsFromCSV(ratingCsvText){
+  const grid = parseCSV(ratingCsvText);
+  const values = [];
+  for(let row=2; row<=grid.length; row++){
+    const value = (getCell(grid, 1, row) || '').toString().trim();
+    if(value && !values.includes(value)) values.push(value);
+  }
+  if(!values.length) throw new Error('rating sheet has no options');
+  const select = $('rating');
+  if(!select) return;
+  const previous = select.value;
+  select.innerHTML = '';
+  values.forEach(value=>select.appendChild(new Option(value, value)));
+  select.value = values.includes(previous) ? previous : (values.includes('未評級') ? '未評級' : values[0]);
+  document.dispatchEvent(new CustomEvent('rating-options-updated'));
+}
+
+const PASSING_RATING_OPTIONS = new Set([
+  '評級過關，未達跳標', '評級過關', '跳級過關',
+  '評級通過，未達跳標', '評級通過', '跳級通過'
+]);
+function validateRatingDegreeCompatibility(showAlert){
+  const level = $('level') ? $('level').value : '';
+  const rating = $('rating') ? $('rating').value : '';
+  const degree = $('degreeSelect') ? $('degreeSelect').value : '';
+  if(!['1','2','3','4','5','6'].includes(level) || !degree || !PASSING_RATING_OPTIONS.has(rating)) return true;
+  const degreeRowMap = getDegreeRowMap();
+  const sourceRow = Number(degreeRowMap[level] && degreeRowMap[level][degree]);
+  const compatible = Number.isFinite(sourceRow) && sourceRow >= 22;
+  if(!compatible && showAlert) alert('請確認程度是否達到評級標準');
+  return compatible;
 }
 
 function fetchSheetCsv(sheetId, gid){ const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`; return fetch(url).then(r=>{ if(!r.ok) throw new Error('fetch failed'); return r.text(); }); }
@@ -1825,6 +1869,7 @@ function selectVisibleRequired(){
 window.addEventListener('load', ()=>{
   const sheetId = '1kx9lS69H_ldkeKt3Nww_k65z8IMcRgTlm86uFJtdViA';
   const sheetGid = '0';
+  const ratingSheetGid = '2142793887';
 
   const continueInit = ()=>{
     const custom = getCustomOptions();
@@ -1930,10 +1975,12 @@ window.addEventListener('load', ()=>{
   };
 
   // 先嘗試自動從 Google Sheet 抓取並套用；失敗則退回原本 localStorage/default 初始化
-  fetchSheetCsv(sheetId, sheetGid).then(txt=>{
-    try{ applySheetMappingsFromCSV(txt); }catch(e){ console.warn('apply sheet failed', e); }
-  }).catch(e=>{
-    console.warn('fetch sheet failed, fallback to local defaults', e);
+  Promise.allSettled([
+    fetchSheetCsv(sheetId, sheetGid).then(txt=>applySheetMappingsFromCSV(txt)),
+    fetchSheetCsv(sheetId, ratingSheetGid).then(txt=>applyRatingOptionsFromCSV(txt))
+  ]).then(results=>{
+    if(results[0].status === 'rejected') console.warn('fetch degree sheet failed, fallback to local defaults', results[0].reason);
+    if(results[1].status === 'rejected') console.warn('fetch rating sheet failed, fallback to built-in options', results[1].reason);
   }).finally(()=>{
     continueInit();
   });
