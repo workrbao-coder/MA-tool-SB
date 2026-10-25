@@ -2,50 +2,59 @@
   if(!document.documentElement.classList.contains('mobile-survey-prototype')) return;
   const appWindow = window;
   const doc = document;
-  let visibilityFrame = null;
-  // Only size the page; moving it by visualViewport.offsetTop can offset touch targets.
-  function syncViewportHeight(){
-    const viewport = window.visualViewport;
-    if(viewport && viewport.scale !== 1) return;
-    doc.documentElement.style.setProperty('--mobile-height', `${viewport ? viewport.height : window.innerHeight}px`);
-    scheduleInputVisibility();
-  }
-  syncViewportHeight();
-  window.addEventListener('resize', syncViewportHeight);
-  if(window.visualViewport) window.visualViewport.addEventListener('resize', syncViewportHeight);
-
-  function scheduleInputVisibility(){
-    if(visibilityFrame) window.cancelAnimationFrame(visibilityFrame);
-    visibilityFrame = window.requestAnimationFrame(()=>{
-      visibilityFrame = null;
-      keepInputVisible();
-    });
-  }
-
-  function keepInputVisible(){
+  let visibilityTimer = null;
+  let revealUntil = 0;
+  function editingField(){
     const field = doc.activeElement;
-    const scrollArea = doc.querySelector('.prototype-scroll');
-    const editing = !!(field && field.matches('textarea, input[type="text"]') && scrollArea && scrollArea.contains(field));
-    if(!editing) return;
+    return field && field.matches('textarea, input[type="text"]') && field.closest('.prototype-scroll') ? field : null;
+  }
+  function scheduleInputVisibility(delay = 160){
+    window.clearTimeout(visibilityTimer);
+    visibilityTimer = window.setTimeout(keepInputVisible, delay);
+  }
+  function keepInputVisible(){
+    const field = editingField();
+    if(!field) return;
     const viewport = window.visualViewport;
     if(viewport && viewport.scale !== 1) return;
-    const bounds = scrollArea.getBoundingClientRect();
     const viewportTop = viewport ? viewport.offsetTop : 0;
     const viewportBottom = viewportTop + (viewport ? viewport.height : window.innerHeight);
-    const top = Math.max(bounds.top, viewportTop) + 12;
-    const bottom = Math.min(bounds.bottom, viewportBottom) - 12;
+    const top = viewportTop + 12;
+    const bottom = viewportBottom - 12;
     if(bottom <= top) return;
     const rect = field.getBoundingClientRect();
-    // Scroll only the form, keeping the page and its touch coordinates stationary.
+    let delta = 0;
+    // Let native focus scrolling finish, then correct only a clipped input.
     if(rect.top < top || rect.height > bottom - top){
-      scrollArea.scrollTop += rect.top - top;
+      delta = rect.top - top;
     }else if(rect.bottom > bottom){
-      scrollArea.scrollTop += rect.bottom - bottom;
+      delta = rect.bottom - bottom;
     }
+    if(Math.abs(delta) > 1) window.scrollBy({top:delta, left:0, behavior:'instant'});
   }
-  doc.addEventListener('focusin', scheduleInputVisibility);
-  doc.addEventListener('focusout', scheduleInputVisibility);
-  if(window.visualViewport) window.visualViewport.addEventListener('scroll', scheduleInputVisibility);
+  doc.addEventListener('focusin', ()=>{
+    doc.documentElement.classList.toggle('mobile-editing', !!editingField());
+    revealUntil = Date.now() + 1000;
+    scheduleInputVisibility(350);
+  });
+  doc.addEventListener('focusout', ()=>{
+    window.clearTimeout(visibilityTimer);
+    window.requestAnimationFrame(()=>{
+      doc.documentElement.classList.toggle('mobile-editing', !!editingField());
+    });
+  });
+  function viewportResized(){
+    revealUntil = Date.now() + 600;
+    scheduleInputVisibility();
+  }
+  window.addEventListener('resize', viewportResized);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', viewportResized);
+    window.visualViewport.addEventListener('scroll', ()=>{
+      // Do not pull the user back after they deliberately scroll while typing.
+      if(Date.now() < revealUntil) scheduleInputVisibility();
+    });
+  }
 
   doc.title = 'MA 手機快速評語';
   doc.documentElement.classList.add('mobile-survey-prototype');
@@ -54,11 +63,12 @@
   style.id = 'mobileSurveyPrototypeStyles';
   style.textContent = `
     :root{--prototype-ink:#17202d;--prototype-blue:#0b4aa2;--prototype-cyan:#087f8c;--prototype-coral:#c94f45;--prototype-line:#d9dee6;--prototype-bg:#eef1f4;}
-    html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;background:var(--prototype-bg)!important;}
-    html,body{height:100%!important;min-height:0!important;overflow:hidden!important;}
-    body{height:var(--mobile-height,100dvh)!important;box-sizing:border-box!important;}
-    body{display:flex!important;flex-direction:column!important;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)!important;color:var(--prototype-ink)!important;}
-    .prototype-scroll{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;padding:10px 0 16px;overscroll-behavior-y:contain;}
+    html,body{width:100%!important;max-width:100%!important;height:auto!important;overflow-x:clip!important;background:var(--prototype-bg)!important;}
+    html{overflow-y:auto!important;scroll-behavior:auto!important;}
+    body{min-height:100svh!important;box-sizing:border-box!important;overflow-y:visible!important;}
+    body{display:block!important;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)!important;color:var(--prototype-ink)!important;}
+    .prototype-scroll{min-height:0;overflow:visible;padding:10px 0 calc(var(--mobile-footer-height,128px) + 16px);}
+    .mobile-editing .prototype-preview-card{visibility:hidden!important;pointer-events:none!important;}
     .header{width:min(100% - 24px,440px)!important;margin:0 auto 8px!important;padding:0!important;gap:8px!important;}
     .header .logo{width:30px!important;height:30px!important;border-radius:6px!important;}
     .header .title{font-size:17px!important;line-height:1.2!important;gap:5px!important;}
@@ -132,7 +142,7 @@
     .optional-skill{min-height:38px;padding:5px 8px!important;border-radius:7px!important;font-size:12px!important;background:#f7f9fc!important;}
     .optional-skill input{width:18px!important;height:18px!important;accent-color:var(--prototype-blue);}
     .note-required{font-size:11px!important;margin-top:8px!important;color:#687386!important;}
-    .prototype-preview-card{position:relative!important;flex:0 0 auto!important;align-self:center!important;width:min(calc(100% - 16px),448px)!important;max-height:65%!important;overflow-y:auto!important;margin:0!important;padding:0 0 8px!important;border:1px solid #ccd5e1!important;border-bottom:0!important;border-radius:8px 8px 0 0!important;background:#fff!important;box-shadow:0 -5px 20px rgba(27,39,51,.14)!important;}
+    .prototype-preview-card{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:20!important;width:min(calc(100% - 16px),448px)!important;max-height:65dvh!important;overflow-y:auto!important;margin:0 auto!important;padding:0 0 calc(8px + env(safe-area-inset-bottom))!important;border:1px solid #ccd5e1!important;border-bottom:0!important;border-radius:8px 8px 0 0!important;background:#fff!important;box-shadow:0 -5px 20px rgba(27,39,51,.14)!important;}
     .prototype-preview-details>summary{list-style:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;min-height:54px;padding:8px 10px;cursor:pointer;}
     .prototype-preview-details>summary::-webkit-details-marker{display:none;}
     .prototype-preview-title{font-size:12px;font-weight:900;color:var(--prototype-blue);white-space:nowrap;}
@@ -311,6 +321,14 @@
   doc.body.prepend(scroller);
   scroller.append(header, container);
   doc.body.appendChild(previewCard);
+  // Keep the footer's space even while hidden, so focus/blur cannot move buttons.
+  function reserveFooterSpace(){
+    doc.documentElement.style.setProperty('--mobile-footer-height', `${previewCard.getBoundingClientRect().height}px`);
+  }
+  if(window.ResizeObserver) new ResizeObserver(reserveFooterSpace).observe(previewCard);
+  previewDetails.addEventListener('toggle', reserveFooterSpace);
+  window.addEventListener('resize', reserveFooterSpace);
+  reserveFooterSpace();
 
   const updatePreviewSnippet = ()=>{
     const text = (preview.textContent || '').trim();
