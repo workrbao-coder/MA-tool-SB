@@ -18,19 +18,21 @@
 <script>
   (()=>{
     const params = new URLSearchParams(window.location.search);
-    const isPrototypeFrame = params.get('mobile-prototype') === '1';
+    const useMobileLayout = params.get('mobile-prototype') === '1';
     const useDesktopLayout = params.get('desktop') === '1';
     const mobileUserAgent = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
     const narrowScreen = window.matchMedia('(max-width: 820px)').matches;
-    if(!isPrototypeFrame && !useDesktopLayout && (mobileUserAgent || narrowScreen)){
-      window.location.replace('./mobile-prototype.html');
+    if(!useDesktopLayout && (useMobileLayout || mobileUserAgent || narrowScreen)){
+      document.documentElement.classList.add('mobile-survey-prototype');
     }
   })();
 </script>
 
+<script src="./mobile-ui.js" defer></script>
+
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.17';
+  const APP_VERSION = 'v2.8.18';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -442,7 +444,7 @@ textarea{min-height:50px;resize:vertical;}
 <body>
 <div class="header">
   <img class="logo" src="./MA-icon.png" alt="MA">
-  <div class="title">評語產生器(SB)<span class="version">v2.8.17　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <div class="title">評語產生器(SB)<span class="version">v2.8.18　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">

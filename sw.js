@@ -1,8 +1,9 @@
-const CACHE_NAME = 'ma-tool-sb-v2.8.17';
+const CACHE_NAME = 'ma-tool-sb-v2.8.18';
 const ASSETS = [
   './',
   './index.html',
   './mobile-prototype.html',
+  './mobile-ui.js',
   './MA-icon.png',
   './icon-192.png',
   './icon-512.png',
