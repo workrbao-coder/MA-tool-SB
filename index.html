@@ -32,7 +32,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.20';
+  const APP_VERSION = 'v2.8.21';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -444,7 +444,7 @@ textarea{min-height:50px;resize:vertical;}
 <body>
 <div class="header">
   <img class="logo" src="./MA-icon.png" alt="MA">
-  <div class="title">評語產生器(SB)<span class="version">v2.8.20　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <div class="title">評語產生器(SB)<span class="version">v2.8.21　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">
@@ -1710,6 +1710,8 @@ function setRemarkStateFor(el, state){
 function initTriStateRemarks(){
   document.querySelectorAll('.remark').forEach(r=>{
     if(r.tagName !== 'INPUT') return;
+    // DOMContentLoaded and async sheet loading both initialize these controls.
+    if(r.dataset.remarkInitialized === '1') return;
     const isTri = r.dataset.tristate === 'true' || r.dataset.tristate === '1';
     r.tabIndex = 0;
     if(!r.dataset.state) r.dataset.state = r.checked ? 'yes' : 'no';
@@ -1836,6 +1838,7 @@ function initTriStateRemarks(){
 
     // keep focus behavior (for control panel)
     r.addEventListener('focus', ()=>{ activeRemark = r; updateRemarkControlUI(); });
+    r.dataset.remarkInitialized = '1';
 
   });
 
