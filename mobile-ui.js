@@ -2,15 +2,50 @@
   if(!document.documentElement.classList.contains('mobile-survey-prototype')) return;
   const appWindow = window;
   const doc = document;
+  let visibilityFrame = null;
   // Only size the page; moving it by visualViewport.offsetTop can offset touch targets.
   function syncViewportHeight(){
     const viewport = window.visualViewport;
     if(viewport && viewport.scale !== 1) return;
     doc.documentElement.style.setProperty('--mobile-height', `${viewport ? viewport.height : window.innerHeight}px`);
+    scheduleInputVisibility();
   }
   syncViewportHeight();
   window.addEventListener('resize', syncViewportHeight);
   if(window.visualViewport) window.visualViewport.addEventListener('resize', syncViewportHeight);
+
+  function scheduleInputVisibility(){
+    if(visibilityFrame) window.cancelAnimationFrame(visibilityFrame);
+    visibilityFrame = window.requestAnimationFrame(()=>{
+      visibilityFrame = null;
+      keepInputVisible();
+    });
+  }
+
+  function keepInputVisible(){
+    const field = doc.activeElement;
+    const scrollArea = doc.querySelector('.prototype-scroll');
+    const editing = !!(field && field.matches('textarea, input[type="text"]') && scrollArea && scrollArea.contains(field));
+    if(!editing) return;
+    const viewport = window.visualViewport;
+    if(viewport && viewport.scale !== 1) return;
+    const bounds = scrollArea.getBoundingClientRect();
+    const viewportTop = viewport ? viewport.offsetTop : 0;
+    const viewportBottom = viewportTop + (viewport ? viewport.height : window.innerHeight);
+    const top = Math.max(bounds.top, viewportTop) + 12;
+    const bottom = Math.min(bounds.bottom, viewportBottom) - 12;
+    if(bottom <= top) return;
+    const rect = field.getBoundingClientRect();
+    // Scroll only the form, keeping the page and its touch coordinates stationary.
+    if(rect.top < top || rect.height > bottom - top){
+      scrollArea.scrollTop += rect.top - top;
+    }else if(rect.bottom > bottom){
+      scrollArea.scrollTop += rect.bottom - bottom;
+    }
+  }
+  doc.addEventListener('focusin', scheduleInputVisibility);
+  doc.addEventListener('focusout', scheduleInputVisibility);
+  if(window.visualViewport) window.visualViewport.addEventListener('scroll', scheduleInputVisibility);
 
   doc.title = 'MA 手機快速評語';
   doc.documentElement.classList.add('mobile-survey-prototype');

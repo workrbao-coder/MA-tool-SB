@@ -32,7 +32,7 @@
 
 <script>
   // APP version - 修改這裡即可一次更新整個專案顯示
-  const APP_VERSION = 'v2.8.18';
+  const APP_VERSION = 'v2.8.19';
 
   document.addEventListener('DOMContentLoaded', () => {
     const vEl = document.querySelector('.version');
@@ -444,7 +444,7 @@ textarea{min-height:50px;resize:vertical;}
 <body>
 <div class="header">
   <img class="logo" src="./MA-icon.png" alt="MA">
-  <div class="title">評語產生器(SB)<span class="version">v2.8.18　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
+  <div class="title">評語產生器(SB)<span class="version">v2.8.19　　</span><a href="https://docs.google.com/spreadsheets/d/1Sf5wgPqztXA6zYvyqUYZ-LIUBmBe9frX_kb-kstVq7A/edit?gid=992673677#gid=992673677" target="_blank" rel="noopener noreferrer">SB初中階MA產生器</a></div>
 </div>
 
 <div class="container">
@@ -2711,6 +2711,19 @@ if($('resetNeedBtn')) $('resetNeedBtn').onclick = ()=>{
   alert('已重置為預設');
 };
 
+function appendQuickOptionText(textarea, text){
+  if(!textarea) return;
+  const item = String(text).replace(/^[、\s]+|[、\s]+$/g, '');
+  if(!item) return;
+  const mobile = document.documentElement.classList.contains('mobile-survey-prototype');
+  // Finish any pending keyboard composition before appending a quick option.
+  if(mobile && document.activeElement === textarea) textarea.blur();
+  const current = textarea.value.replace(/[、\s]+$/g, '');
+  textarea.value = current ? `${current}、${item}` : item;
+  if(!mobile) textarea.focus();
+  textarea.dispatchEvent(new Event('input', {bubbles:true}));
+}
+
 // render quick buttons for need (in generator)
 function renderNeedQuickButtons(){
   ensureNeedTemplatesInitialized();
@@ -2744,11 +2757,7 @@ function renderNeedQuickButtons(){
       e.stopPropagation();
       const ta = $('needImprove');
       if(!ta) return;
-      const needPunct = ta.value.trim().length > 0;
-      if(needPunct) ta.value = ta.value + '、' + t;
-      else ta.value = ta.value + t;
-      ta.focus();
-      try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+      appendQuickOptionText(ta, t);
     };
     listEl.appendChild(item);
   });
@@ -2787,10 +2796,7 @@ function renderPracticeQuickButtons(){
       e.stopPropagation();
       const ta = $('practice');
       if(!ta) return;
-      const has = ta.value.trim().length > 0;
-      ta.value = has ? (ta.value + '、' + t) : t;
-      ta.focus();
-      try{ if(typeof generatePreview === 'function') generatePreview(); }catch(e){}
+      appendQuickOptionText(ta, t);
     };
     listEl.appendChild(item);
   });

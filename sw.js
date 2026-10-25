@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ma-tool-sb-v2.8.18';
+const CACHE_NAME = 'ma-tool-sb-v2.8.19';
 const ASSETS = [
   './',
   './index.html',
