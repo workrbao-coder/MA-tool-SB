@@ -186,6 +186,7 @@
     {id:'character',label:'特質',grid:'compact-5',collapsible:true}
   ];
   const choiceSections = new Map();
+  const level7ExcludedRatings = new Set(['評級未過', '評級過關，未達跳標', '跳級過關']);
 
   function selectValue(select, value){
     if(select.value === value) return;
@@ -224,9 +225,14 @@
       choiceSections.set(config.id, section);
     }
     const grid = section.querySelector('.prototype-choice-grid');
+    const filterLevel7Rating = config.id === 'rating' && doc.getElementById('level').value === '7';
+    if(filterLevel7Rating && level7ExcludedRatings.has(select.value)){
+      select.value = '未評級';
+      if(typeof appWindow.generatePreview === 'function') appWindow.generatePreview();
+    }
     const currentValue = section.querySelector('.prototype-choice-value');
     if(currentValue) currentValue.textContent = select.value || '未選擇';
-    const options = Array.from(select.options).filter(option=>option.value !== '');
+    const options = Array.from(select.options).filter(option=>option.value !== '' && !(filterLevel7Rating && level7ExcludedRatings.has(option.value)));
     const signature = JSON.stringify(options.map(option=>[option.value, option.textContent]));
     // Preserve button nodes during selection so an in-flight tap keeps its target.
     if(grid.dataset.options !== signature){
@@ -350,7 +356,7 @@
       skillsDetails.hidden = !level;
       skillsDetails.querySelector('summary').textContent = ['7','8'].includes(level) ? '核心技能' : '必要技能';
       if(skillsDetails.dataset.level !== level){
-        skillsDetails.open = !!level;
+        skillsDetails.open = !!level && !['4','5','6'].includes(level);
         skillsDetails.dataset.level = level;
       }
     }
